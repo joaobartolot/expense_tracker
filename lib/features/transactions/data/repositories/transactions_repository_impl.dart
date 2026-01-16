@@ -1,9 +1,9 @@
 import 'package:expense_tracker/features/transactions/data/datasources/transactions_data_source.dart';
 import 'package:expense_tracker/features/transactions/data/mappers/transaction_mapper.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction.dart';
-import 'package:expense_tracker/features/transactions/domain/repositories/transaction_repository.dart';
+import 'package:expense_tracker/features/transactions/domain/repositories/transactions_repository.dart';
 
-class TransactionsRepositoryImpl implements TransactionRepository {
+class TransactionsRepositoryImpl implements TransactionsRepository {
   final TransactionsDataSource _ds;
 
   TransactionsRepositoryImpl(this._ds);
@@ -46,7 +46,10 @@ class TransactionsRepositoryImpl implements TransactionRepository {
   @override
   Future<Transaction?> getById(String id) async {
     final model = await _ds.getById(id);
-    return toDomain(model!);
+    if (model == null) {
+      return null;
+    }
+    return toDomain(model);
   }
 
   @override

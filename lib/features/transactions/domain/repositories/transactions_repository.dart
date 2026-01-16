@@ -1,6 +1,6 @@
 import 'package:expense_tracker/features/transactions/domain/models/transaction.dart';
 
-abstract interface class TransactionRepository {
+abstract interface class TransactionsRepository {
   Future<void> init();
 
   Future<void> upsert(Transaction transaction);

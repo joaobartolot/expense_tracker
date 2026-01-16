@@ -1,5 +1,5 @@
 import 'package:expense_tracker/features/transactions/data/datasources/transactions_data_source.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/transaction_hive_model.dart';
 
@@ -9,8 +9,21 @@ class HiveTransactionsDataSource implements TransactionsDataSource {
   final String boxName;
   Box<TransactionHiveModel>? _box;
 
+  static Future<void>? _hiveInitFuture;
+
+  static Future<void> _initializeHiveOnce() async {
+    await Hive.initFlutter();
+    // Register adapters once
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(TransactionHiveModelAdapter());
+    }
+  }
+
   @override
   Future<void> init() async {
+    _hiveInitFuture ??= _initializeHiveOnce();
+    await _hiveInitFuture;
+
     if (_box?.isOpen == true) return;
     _box = await Hive.openBox<TransactionHiveModel>(boxName);
   }
