@@ -20,7 +20,7 @@ class TransactionAmount extends StatelessWidget {
   Widget build(BuildContext context) {
     final amount = centsToEuros(amountCents);
     final formattedAmount = NumberFormat.currency(
-      symbol: '€',
+      symbol: '€ ',
       decimalDigits: 2,
     ).format(amount);
 

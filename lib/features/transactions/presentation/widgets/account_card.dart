@@ -1,5 +1,6 @@
 import 'package:expense_tracker/shared/utils/currency_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class AccountCard extends StatelessWidget {
   const AccountCard({
@@ -12,6 +13,11 @@ class AccountCard extends StatelessWidget {
   final int balanceCents;
   final VoidCallback onAdd;
   final VoidCallback onTransfer;
+
+  String _formatMoney(int cents) {
+    final euros = centsToEuros(cents);
+    return NumberFormat.currency(symbol: '€ ', decimalDigits: 2).format(euros);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +59,7 @@ class AccountCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    formatCents(balanceCents),
+                    _formatMoney(balanceCents),
                     style: text.headlineMedium?.copyWith(
                       color: cs.onPrimaryContainer,
                       fontWeight: FontWeight.w800,
