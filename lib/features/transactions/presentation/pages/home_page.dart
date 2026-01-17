@@ -112,6 +112,18 @@ class HomePage extends ConsumerWidget {
                 transactions: transactionList,
                 onDelete: (id) =>
                     ref.read(transactionsRepositoryProvider).deleteById(id),
+                onEdit: (transaction) {
+                  context.push(
+                    Routes.editTransaction,
+                    extra: transaction,
+                  );
+                },
+                onTap: (transaction) {
+                  context.push(
+                    Routes.transactionDetails,
+                    extra: transaction,
+                  );
+                },
               ),
             ],
           );

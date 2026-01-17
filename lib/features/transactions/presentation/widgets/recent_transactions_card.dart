@@ -7,10 +7,14 @@ class RecentTransactionsCard extends StatelessWidget {
     super.key,
     required this.transactions,
     required this.onDelete,
+    required this.onEdit,
+    required this.onTap,
   });
 
   final List<Transaction> transactions;
   final Future<void> Function(String id) onDelete;
+  final void Function(Transaction transaction) onEdit;
+  final void Function(Transaction transaction) onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -47,14 +51,32 @@ class RecentTransactionsCard extends StatelessWidget {
 
           return Dismissible(
             key: ValueKey(transaction.id),
+            direction: DismissDirection.horizontal,
+            confirmDismiss: (direction) async {
+              if (direction == DismissDirection.startToEnd) {
+                // Left to right - Edit
+                onEdit(transaction);
+                return false; // Don't dismiss
+              } else {
+                // Right to left - Delete
+                return await _showDeleteDialog(context, transaction);
+              }
+            },
             onDismissed: (_) => onDelete(transaction.id),
             background: Container(
+              color: Colors.blue,
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.only(left: 20),
+              child: const Icon(Icons.edit, color: Colors.white),
+            ),
+            secondaryBackground: Container(
               color: Colors.red,
               alignment: Alignment.centerRight,
               padding: const EdgeInsets.only(right: 20),
               child: const Icon(Icons.delete, color: Colors.white),
             ),
             child: ListTile(
+              onTap: () => onTap(transaction),
               leading: CircleAvatar(
                 backgroundColor: (isExpense ? Colors.red : Colors.green)
                     .withValues(alpha: 0.12),
@@ -83,5 +105,32 @@ class RecentTransactionsCard extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Future<bool> _showDeleteDialog(
+    BuildContext context,
+    Transaction transaction,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Transaction'),
+        content: Text(
+          'Are you sure you want to delete "${transaction.name}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 }
