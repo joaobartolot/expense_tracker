@@ -1,3 +1,4 @@
+import 'package:expense_tracker/features/transactions/domain/enums/category.dart';
 import 'package:expense_tracker/features/transactions/domain/enums/transaction_type.dart';
 
 class Transaction {
@@ -15,7 +16,7 @@ class Transaction {
   final String name;
   final int amountCents;
   final TransactionType type;
-  final String category;
+  final Category category;
   final DateTime date;
   final String? note;
 
@@ -27,7 +28,7 @@ class Transaction {
     String? name,
     int? amountCents,
     TransactionType? type,
-    String? category,
+    Category? category,
     DateTime? date,
     String? note,
   }) {
@@ -50,7 +51,7 @@ class Transaction {
           name == other.name &&
           amountCents == other.amountCents &&
           type == other.type &&
-          category == other.category &&
+          category.key == other.category.key &&
           date == other.date &&
           note == other.note;
 

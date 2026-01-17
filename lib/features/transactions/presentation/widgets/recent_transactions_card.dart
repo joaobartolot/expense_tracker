@@ -42,29 +42,42 @@ class RecentTransactionsCard extends StatelessWidget {
           color: cs.outlineVariant.withValues(alpha: 0.35),
         ),
         itemBuilder: (context, index) {
-          final tx = transactions[index];
-          final isExpense = tx.isExpense;
+          final transaction = transactions[index];
+          final isExpense = transaction.isExpense;
 
-          return ListTile(
-            onLongPress: () => onDelete(tx.id),
-            leading: CircleAvatar(
-              backgroundColor: (isExpense ? Colors.red : Colors.green)
-                  .withValues(alpha: 0.12),
-              child: Icon(
-                isExpense ? Icons.remove_rounded : Icons.add_rounded,
-                color: isExpense ? Colors.red : Colors.green,
+          return Dismissible(
+            key: ValueKey(transaction.id),
+            onDismissed: (_) => onDelete(transaction.id),
+            background: Container(
+              color: Colors.red,
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              child: const Icon(Icons.delete, color: Colors.white),
+            ),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: (isExpense ? Colors.red : Colors.green)
+                    .withValues(alpha: 0.12),
+                child: Icon(
+                  isExpense ? Icons.remove_rounded : Icons.add_rounded,
+                  color: isExpense ? Colors.red : Colors.green,
+                ),
               ),
-            ),
-            title: Text(tx.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-            subtitle: Text(
-              '${tx.category} • ${tx.date.toLocal().toString().split('.').first}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: TransactionAmount(
-              amountCents: tx.amountCents,
-              type: tx.type,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              title: Text(
+                transaction.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                '${transaction.category.displayName} • ${transaction.date.toLocal().toString().split(' ').first}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: TransactionAmount(
+                amountCents: transaction.amountCents,
+                type: transaction.type,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           );
         },

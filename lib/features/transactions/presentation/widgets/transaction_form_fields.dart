@@ -1,3 +1,4 @@
+import 'package:expense_tracker/features/transactions/domain/enums/category.dart';
 import 'package:expense_tracker/features/transactions/domain/enums/transaction_type.dart';
 import 'package:flutter/material.dart';
 
@@ -149,9 +150,9 @@ class _TypeButton extends StatelessWidget {
 
 /// Reusable dropdown form field for categories
 class CategoryDropdown extends StatelessWidget {
-  final String? value;
-  final Function(String?) onChanged;
-  final List<String> categories;
+  final Category? value;
+  final Function(Category?) onChanged;
+  final List<Category> categories;
 
   const CategoryDropdown({
     super.key,
@@ -162,11 +163,11 @@ class CategoryDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<String>(
+    return DropdownButtonFormField<Category>(
       initialValue: value,
       decoration: getTransactionInputDecoration(context, 'Category'),
       items: categories
-          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+          .map((c) => DropdownMenuItem(value: c, child: Text(c.displayName)))
           .toList(),
       onChanged: onChanged,
       validator: (v) => v == null ? 'Required' : null,

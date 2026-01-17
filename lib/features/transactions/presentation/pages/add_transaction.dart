@@ -1,3 +1,4 @@
+import 'package:expense_tracker/features/transactions/domain/enums/category.dart';
 import 'package:expense_tracker/features/transactions/domain/enums/transaction_type.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction.dart';
 import 'package:expense_tracker/features/transactions/presentation/widgets/transaction_form_fields.dart';
@@ -22,17 +23,13 @@ class _AddTransactionState extends ConsumerState<AddTransaction> {
   final _noteCtrl = TextEditingController();
 
   TransactionType _type = TransactionType.expense;
-  String? _selectedCategory;
+  Category? _selectedCategory = ExpenseCategory.values.first;
 
-  final List<String> _categories = const [
-    'Food',
-    'Transport',
-    'Bills',
-    'Shopping',
-    'Health',
-    'Entertainment',
-    'Other',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _selectedCategory = ExpenseCategory.values.first;
+  }
 
   @override
   void dispose() {
@@ -78,7 +75,12 @@ class _AddTransactionState extends ConsumerState<AddTransaction> {
             children: [
               TransactionTypeSwitch(
                 value: _type,
-                onChanged: (v) => setState(() => _type = v),
+                onChanged: (v) => setState(() {
+                  _type = v;
+                  _selectedCategory = _type == TransactionType.expense
+                      ? ExpenseCategory.values.first
+                      : IncomeCategory.values.first;
+                }),
               ),
               const SizedBox(height: 28),
               TransactionTextFormField(
@@ -104,8 +106,11 @@ class _AddTransactionState extends ConsumerState<AddTransaction> {
               const SizedBox(height: 20),
               CategoryDropdown(
                 value: _selectedCategory,
-                categories: _categories,
-                onChanged: (v) => setState(() => _selectedCategory = v),
+                categories: _type == TransactionType.expense
+                    ? ExpenseCategory.values
+                    : IncomeCategory.values,
+                onChanged: (v) =>
+                    setState(() => _selectedCategory = v as Category),
               ),
               const SizedBox(height: 20),
               TransactionTextFormField(

@@ -13,8 +13,7 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final txsAsync = ref.watch(transactionsStreamProvider);
-    final cs = Theme.of(context).colorScheme;
+    final transactionsStream = ref.watch(transactionsStreamProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -30,15 +29,15 @@ class HomePage extends ConsumerWidget {
           ),
         ],
       ),
-      body: txsAsync.when(
+      body: transactionsStream.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: ${err.toString()}')),
-        data: (txs) {
-          final incomeCents = txs
+        data: (transactionList) {
+          final incomeCents = transactionList
               .where((t) => t.isIncome)
               .fold<int>(0, (sum, t) => sum + t.amountCents);
 
-          final expenseCents = txs
+          final expenseCents = transactionList
               .where((t) => t.isExpense)
               .fold<int>(0, (sum, t) => sum + t.amountCents);
 
@@ -110,7 +109,7 @@ class HomePage extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               RecentTransactionsCard(
-                transactions: txs,
+                transactions: transactionList,
                 onDelete: (id) =>
                     ref.read(transactionsRepositoryProvider).deleteById(id),
               ),

@@ -15,7 +15,7 @@ class TransactionsRepositoryImpl implements TransactionsRepository {
     if (tx.amountCents <= 0) {
       throw ArgumentError('Amount must be > 0.');
     }
-    if (tx.category.trim().isEmpty) {
+    if (tx.category.key.isEmpty) {
       throw ArgumentError('Category cannot be empty.');
     }
   }
