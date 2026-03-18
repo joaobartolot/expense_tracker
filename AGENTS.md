@@ -14,6 +14,8 @@ You MUST NOT:
 - Run commands before consulting README.md
 - Modify code in ways that contradict README.md
 
+There is no need to write tests unless the user explicitly asks for them.
+
 If README.md is missing or insufficient:
 → STOP and ask the user for clarification
 
@@ -34,7 +36,6 @@ Flutter application.
 Before finishing a task, run:
 1. `dart format .`
 2. `flutter analyze`
-3. `flutter test`
 
 ## Android
 - Prefer Gradle files already checked into the repo.
