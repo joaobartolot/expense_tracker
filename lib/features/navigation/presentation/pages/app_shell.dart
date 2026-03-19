@@ -1,3 +1,5 @@
+import 'package:expense_tracker/features/categories/data/category_repository.dart';
+import 'package:expense_tracker/features/categories/presentation/pages/categories_page.dart';
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/features/home/data/transaction_repository.dart';
 import 'package:expense_tracker/features/home/presentation/pages/home_page.dart';
@@ -5,9 +7,14 @@ import 'package:expense_tracker/features/navigation/presentation/widgets/pill_bo
 import 'package:flutter/material.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, required this.repository});
+  const AppShell({
+    super.key,
+    required this.repository,
+    required this.categoryRepository,
+  });
 
   final TransactionRepository repository;
+  final CategoryRepository categoryRepository;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -19,7 +26,7 @@ class _AppShellState extends State<AppShell> {
   late final List<Widget> _pages = [
     HomePage(repository: widget.repository),
     const _PlaceholderPage(label: 'Accounts'),
-    const _PlaceholderPage(label: 'Categories'),
+    CategoriesPage(repository: widget.categoryRepository),
     const _PlaceholderPage(label: 'Recurring'),
     const _PlaceholderPage(label: 'Settings'),
   ];
