@@ -13,6 +13,13 @@ class ExpenseTrackerApp extends StatelessWidget {
       title: 'Expense Tracker',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
+      builder: (context, child) {
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: AppShell(
         repository: InMemoryTransactionRepository(),
         categoryRepository: InMemoryCategoryRepository(),

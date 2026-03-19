@@ -24,7 +24,10 @@ class _AppShellState extends State<AppShell> {
   int _currentIndex = 0;
 
   late final List<Widget> _pages = [
-    HomePage(repository: widget.repository),
+    HomePage(
+      repository: widget.repository,
+      categoryRepository: widget.categoryRepository,
+    ),
     const _PlaceholderPage(label: 'Accounts'),
     CategoriesPage(repository: widget.categoryRepository),
     const _PlaceholderPage(label: 'Recurring'),

@@ -12,6 +12,7 @@ class AppColors {
   static const Color textPrimary = Color(0xFF111827);
   static const Color textSecondary = Color(0xFF6B7280);
   static const Color iconMuted = Color(0xFF374151);
+  static const Color border = Color(0xFFD7DFDA);
 
   static const Color incomeSurface = Color(0xFFD1FAE5);
   static const Color income = Color(0xFF047857);

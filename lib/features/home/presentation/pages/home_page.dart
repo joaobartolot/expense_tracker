@@ -1,15 +1,22 @@
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/date_label_formatter.dart';
+import 'package:expense_tracker/features/categories/data/category_repository.dart';
 import 'package:expense_tracker/features/home/data/transaction_repository.dart';
 import 'package:expense_tracker/features/home/domain/models/transaction_item.dart';
+import 'package:expense_tracker/features/home/presentation/pages/add_transaction_page.dart';
 import 'package:expense_tracker/features/home/presentation/widgets/balance_card.dart';
 import 'package:expense_tracker/features/home/presentation/widgets/transaction_group.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.repository});
+  const HomePage({
+    super.key,
+    required this.repository,
+    required this.categoryRepository,
+  });
 
   final TransactionRepository repository;
+  final CategoryRepository categoryRepository;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -37,8 +44,18 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _addTransaction() async {
-    await widget.repository.addTransaction(_buildMockTransaction());
-    await _loadTransactions();
+    final shouldReload = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => AddTransactionPage(
+          repository: widget.repository,
+          categoryRepository: widget.categoryRepository,
+        ),
+      ),
+    );
+
+    if (shouldReload == true) {
+      await _loadTransactions();
+    }
   }
 
   @override
@@ -110,16 +127,5 @@ class _HomePageState extends State<HomePage> {
     }
 
     return grouped;
-  }
-
-  TransactionItem _buildMockTransaction() {
-    return TransactionItem(
-      title: 'Sample expense',
-      subtitle: 'Mock added transaction',
-      amount: 14.50,
-      date: DateTime.now(),
-      type: TransactionType.expense,
-      icon: Icons.receipt_long_outlined,
-    );
   }
 }
