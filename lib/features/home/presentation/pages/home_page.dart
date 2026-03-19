@@ -50,51 +50,49 @@ class _HomePageState extends State<HomePage> {
       (sum, transaction) => sum + transaction.signedAmount,
     );
 
-    return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-          children: [
-            Text(
-              'Hello',
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        children: [
+          Text(
+            'Hello',
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          BalanceCard(balance: balance),
+          const SizedBox(height: 28),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Transactions',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            BalanceCard(balance: balance),
-            const SizedBox(height: 28),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Transactions',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+              InkWell(
+                onTap: _addTransaction,
+                borderRadius: BorderRadius.circular(999),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 6,
                   ),
+                  child: const Icon(Icons.add, color: AppColors.brand),
                 ),
-                InkWell(
-                  onTap: _addTransaction,
-                  borderRadius: BorderRadius.circular(999),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 6,
-                    ),
-                    child: const Icon(Icons.add, color: AppColors.brand),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ...groupedTransactions.entries.map(
-              (entry) =>
-                  TransactionGroup(label: entry.key, transactions: entry.value),
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...groupedTransactions.entries.map(
+            (entry) =>
+                TransactionGroup(label: entry.key, transactions: entry.value),
+          ),
+        ],
       ),
     );
   }

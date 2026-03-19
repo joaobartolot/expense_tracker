@@ -1,6 +1,6 @@
 import 'package:expense_tracker/core/theme/app_theme.dart';
 import 'package:expense_tracker/features/home/data/in_memory_transaction_repository.dart';
-import 'package:expense_tracker/features/home/presentation/pages/home_page.dart';
+import 'package:expense_tracker/features/navigation/presentation/pages/app_shell.dart';
 import 'package:flutter/material.dart';
 
 class ExpenseTrackerApp extends StatelessWidget {
@@ -12,7 +12,7 @@ class ExpenseTrackerApp extends StatelessWidget {
       title: 'Expense Tracker',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      home: HomePage(repository: InMemoryTransactionRepository()),
+      home: AppShell(repository: InMemoryTransactionRepository()),
     );
   }
 }
