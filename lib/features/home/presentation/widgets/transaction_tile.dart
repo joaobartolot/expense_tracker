@@ -4,70 +4,84 @@ import 'package:expense_tracker/features/home/domain/models/transaction_item.dar
 import 'package:flutter/material.dart';
 
 class TransactionTile extends StatelessWidget {
-  const TransactionTile({super.key, required this.transaction});
+  const TransactionTile({
+    super.key,
+    required this.transaction,
+    this.onTap,
+    this.onLongPressStart,
+  });
 
   final TransactionItem transaction;
+  final VoidCallback? onTap;
+  final GestureLongPressStartCallback? onLongPressStart;
 
   @override
   Widget build(BuildContext context) {
     final isIncome = transaction.type == TransactionType.income;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: isIncome
-                  ? AppColors.incomeSurface
-                  : AppColors.expenseSurface,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              transaction.icon,
-              color: isIncome ? AppColors.income : AppColors.iconMuted,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(22),
+      child: GestureDetector(
+        onLongPressStart: onLongPressStart,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
-                Text(
-                  transaction.title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: isIncome
+                        ? AppColors.incomeSurface
+                        : AppColors.expenseSurface,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    transaction.icon,
+                    color: isIncome ? AppColors.income : AppColors.iconMuted,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        transaction.title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        transaction.subtitle,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Text(
-                  transaction.subtitle,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
+                  '${isIncome ? '+' : '-'}${formatCurrency(transaction.amount)}',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: isIncome ? AppColors.income : AppColors.textPrimary,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          Text(
-            '${isIncome ? '+' : '-'}${formatCurrency(transaction.amount)}',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: isIncome ? AppColors.income : AppColors.textPrimary,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

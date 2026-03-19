@@ -8,10 +8,15 @@ class TransactionGroup extends StatelessWidget {
     super.key,
     required this.label,
     required this.transactions,
+    required this.onTransactionTap,
+    required this.onTransactionLongPressStart,
   });
 
   final String label;
   final List<TransactionItem> transactions;
+  final ValueChanged<TransactionItem> onTransactionTap;
+  final void Function(TransactionItem, LongPressStartDetails)
+  onTransactionLongPressStart;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +40,12 @@ class TransactionGroup extends StatelessWidget {
           ...transactions.map((transaction) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: TransactionTile(transaction: transaction),
+              child: TransactionTile(
+                transaction: transaction,
+                onTap: () => onTransactionTap(transaction),
+                onLongPressStart: (details) =>
+                    onTransactionLongPressStart(transaction, details),
+              ),
             );
           }),
         ],

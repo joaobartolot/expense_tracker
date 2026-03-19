@@ -13,20 +13,20 @@ class AddTransactionPage extends StatefulWidget {
     super.key,
     required this.repository,
     required this.categoryRepository,
+    this.initialTransaction,
   });
 
   final TransactionRepository repository;
   final CategoryRepository categoryRepository;
+  final TransactionItem? initialTransaction;
 
   @override
   State<AddTransactionPage> createState() => _AddTransactionPageState();
 }
 
 class _AddTransactionPageState extends State<AddTransactionPage> {
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _amountController = TextEditingController(
-    text: '0.00',
-  );
+  late final TextEditingController _nameController;
+  late final TextEditingController _amountController;
 
   TransactionType _type = TransactionType.expense;
   List<CategoryItem> _categories = const [];
@@ -35,9 +35,19 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   bool _isSaving = false;
   bool _isFormattingAmount = false;
 
+  bool get _isEditing => widget.initialTransaction != null;
+
   @override
   void initState() {
     super.initState();
+    final initialTransaction = widget.initialTransaction;
+    _nameController = TextEditingController(
+      text: initialTransaction?.title ?? '',
+    );
+    _amountController = TextEditingController(
+      text: (initialTransaction?.amount ?? 0).toStringAsFixed(2),
+    );
+    _type = initialTransaction?.type ?? TransactionType.expense;
     _nameController.addListener(_handleFieldChange);
     _amountController.addListener(_formatAmountInput);
     _loadCategories();
@@ -68,7 +78,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   CategoryItem? _resolveSelectedCategory(List<CategoryItem> categories) {
-    final selectedCategory = _selectedCategory;
+    final selectedCategory =
+        _selectedCategory ?? _categoryFromInitialTransaction(categories);
     final filteredCategories = _availableCategoriesFrom(categories);
 
     if (selectedCategory == null) {
@@ -78,6 +89,27 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     for (final category in filteredCategories) {
       if (category.name == selectedCategory.name &&
           category.type == selectedCategory.type) {
+        return category;
+      }
+    }
+
+    return null;
+  }
+
+  CategoryItem? _categoryFromInitialTransaction(List<CategoryItem> categories) {
+    final initialTransaction = widget.initialTransaction;
+    if (initialTransaction == null) {
+      return null;
+    }
+
+    final expectedType = switch (initialTransaction.type) {
+      TransactionType.income => CategoryType.income,
+      TransactionType.expense => CategoryType.expense,
+    };
+
+    for (final category in categories) {
+      if (category.name == initialTransaction.subtitle &&
+          category.type == expectedType) {
         return category;
       }
     }
@@ -191,16 +223,22 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       _isSaving = true;
     });
 
-    await widget.repository.addTransaction(
-      TransactionItem(
-        title: _nameController.text.trim(),
-        subtitle: selectedCategory.name,
-        amount: _amountValue,
-        date: DateTime.now(),
-        type: _type,
-        icon: selectedCategory.icon,
-      ),
+    final initialTransaction = widget.initialTransaction;
+    final transaction = TransactionItem(
+      id: initialTransaction?.id ?? widget.repository.createTransactionId(),
+      title: _nameController.text.trim(),
+      subtitle: selectedCategory.name,
+      amount: _amountValue,
+      date: initialTransaction?.date ?? DateTime.now(),
+      type: _type,
+      icon: selectedCategory.icon,
     );
+
+    if (_isEditing) {
+      await widget.repository.updateTransaction(transaction);
+    } else {
+      await widget.repository.addTransaction(transaction);
+    }
 
     if (!mounted) {
       return;
@@ -240,7 +278,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        title: const Text('Add transaction'),
+        title: Text(_isEditing ? 'Edit transaction' : 'Add transaction'),
       ),
       body: SafeArea(
         child: ListView(
@@ -256,7 +294,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Create a new entry',
+                    _isEditing ? 'Update this entry' : 'Create a new entry',
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                       color: AppColors.textPrimary,
@@ -264,7 +302,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Pick the type, give it a clear name, and assign it to the right category.',
+                    _isEditing
+                        ? 'Adjust the details below to keep this transaction accurate.'
+                        : 'Pick the type, give it a clear name, and assign it to the right category.',
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -339,7 +379,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 borderRadius: BorderRadius.circular(24),
               ),
             ),
-            child: Text(_isSaving ? 'Saving...' : 'Save transaction'),
+            child: Text(
+              _isSaving
+                  ? (_isEditing ? 'Saving...' : 'Creating...')
+                  : (_isEditing ? 'Save changes' : 'Save transaction'),
+            ),
           ),
         ),
       ),

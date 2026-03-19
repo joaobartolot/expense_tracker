@@ -7,6 +7,7 @@ class InMemoryTransactionRepository implements TransactionRepository {
     : _transactions = initialTransactions ?? _buildInitialTransactions();
 
   final List<TransactionItem> _transactions;
+  int _nextId = 7;
 
   @override
   Future<List<TransactionItem>> getTransactions() async {
@@ -18,9 +19,32 @@ class InMemoryTransactionRepository implements TransactionRepository {
     _transactions.insert(0, transaction);
   }
 
+  @override
+  Future<void> updateTransaction(TransactionItem transaction) async {
+    final index = _transactions.indexWhere((item) => item.id == transaction.id);
+    if (index == -1) {
+      return;
+    }
+
+    _transactions[index] = transaction;
+  }
+
+  @override
+  Future<void> deleteTransaction(String transactionId) async {
+    _transactions.removeWhere((transaction) => transaction.id == transactionId);
+  }
+
+  @override
+  String createTransactionId() {
+    final id = 'transaction_${_nextId.toString().padLeft(4, '0')}';
+    _nextId++;
+    return id;
+  }
+
   static List<TransactionItem> _buildInitialTransactions() {
     return [
       TransactionItem(
+        id: 'transaction_0001',
         title: 'Salary',
         subtitle: 'Monthly income',
         amount: 2400.00,
@@ -29,6 +53,7 @@ class InMemoryTransactionRepository implements TransactionRepository {
         icon: Icons.payments_outlined,
       ),
       TransactionItem(
+        id: 'transaction_0002',
         title: 'Groceries',
         subtitle: 'Local market',
         amount: 52.30,
@@ -37,6 +62,7 @@ class InMemoryTransactionRepository implements TransactionRepository {
         icon: Icons.shopping_bag_outlined,
       ),
       TransactionItem(
+        id: 'transaction_0003',
         title: 'Coffee',
         subtitle: 'Morning stop',
         amount: 3.80,
@@ -45,6 +71,7 @@ class InMemoryTransactionRepository implements TransactionRepository {
         icon: Icons.local_cafe_outlined,
       ),
       TransactionItem(
+        id: 'transaction_0004',
         title: 'Netflix',
         subtitle: 'Subscription',
         amount: 11.99,
@@ -53,6 +80,7 @@ class InMemoryTransactionRepository implements TransactionRepository {
         icon: Icons.play_circle_outline,
       ),
       TransactionItem(
+        id: 'transaction_0005',
         title: 'Dinner',
         subtitle: 'Italian restaurant',
         amount: 27.40,
@@ -61,6 +89,7 @@ class InMemoryTransactionRepository implements TransactionRepository {
         icon: Icons.restaurant_outlined,
       ),
       TransactionItem(
+        id: 'transaction_0006',
         title: 'Refund',
         subtitle: 'Online order',
         amount: 18.00,
