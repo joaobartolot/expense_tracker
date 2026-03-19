@@ -1,12 +1,12 @@
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/date_label_formatter.dart';
 import 'package:expense_tracker/features/categories/data/category_repository.dart';
-import 'package:expense_tracker/features/home/data/transaction_repository.dart';
-import 'package:expense_tracker/features/home/domain/models/transaction_item.dart';
-import 'package:expense_tracker/features/home/presentation/pages/add_transaction_page.dart';
-import 'package:expense_tracker/features/home/presentation/pages/transaction_detail_page.dart';
-import 'package:expense_tracker/features/home/presentation/widgets/balance_card.dart';
-import 'package:expense_tracker/features/home/presentation/widgets/transaction_group.dart';
+import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
+import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
+import 'package:expense_tracker/features/transactions/presentation/pages/add_transaction_page.dart';
+import 'package:expense_tracker/features/transactions/presentation/pages/transaction_detail_page.dart';
+import 'package:expense_tracker/features/transactions/presentation/widgets/balance_card.dart';
+import 'package:expense_tracker/features/transactions/presentation/widgets/transaction_group.dart';
 import 'package:flutter/material.dart';
 
 enum _TransactionListAction { edit, delete }

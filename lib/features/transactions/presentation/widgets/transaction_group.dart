@@ -1,6 +1,6 @@
 import 'package:expense_tracker/core/theme/app_colors.dart';
-import 'package:expense_tracker/features/home/domain/models/transaction_item.dart';
-import 'package:expense_tracker/features/home/presentation/widgets/transaction_tile.dart';
+import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
+import 'package:expense_tracker/features/transactions/presentation/widgets/transaction_tile.dart';
 import 'package:flutter/material.dart';
 
 class TransactionGroup extends StatelessWidget {

@@ -4,8 +4,8 @@ import 'package:expense_tracker/core/widgets/custom_dropdown_selector.dart';
 import 'package:expense_tracker/core/widgets/segmented_toggle_field.dart';
 import 'package:expense_tracker/features/categories/data/category_repository.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
-import 'package:expense_tracker/features/home/data/transaction_repository.dart';
-import 'package:expense_tracker/features/home/domain/models/transaction_item.dart';
+import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
+import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:flutter/material.dart';
 
 class AddTransactionPage extends StatefulWidget {

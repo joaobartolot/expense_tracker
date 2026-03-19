@@ -1,9 +1,9 @@
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/currency_formatter.dart';
 import 'package:expense_tracker/features/categories/data/category_repository.dart';
-import 'package:expense_tracker/features/home/data/transaction_repository.dart';
-import 'package:expense_tracker/features/home/domain/models/transaction_item.dart';
-import 'package:expense_tracker/features/home/presentation/pages/add_transaction_page.dart';
+import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
+import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
+import 'package:expense_tracker/features/transactions/presentation/pages/add_transaction_page.dart';
 import 'package:flutter/material.dart';
 
 class TransactionDetailPage extends StatefulWidget {

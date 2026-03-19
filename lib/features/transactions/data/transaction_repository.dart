@@ -1,4 +1,4 @@
-import 'package:expense_tracker/features/home/domain/models/transaction_item.dart';
+import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 
 abstract class TransactionRepository {
   Future<List<TransactionItem>> getTransactions();

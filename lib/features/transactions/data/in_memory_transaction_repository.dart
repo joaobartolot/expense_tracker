@@ -1,5 +1,5 @@
-import 'package:expense_tracker/features/home/data/transaction_repository.dart';
-import 'package:expense_tracker/features/home/domain/models/transaction_item.dart';
+import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
+import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:flutter/material.dart';
 
 class InMemoryTransactionRepository implements TransactionRepository {
