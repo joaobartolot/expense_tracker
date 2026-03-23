@@ -29,7 +29,10 @@ class _AppShellState extends State<AppShell> {
       categoryRepository: widget.categoryRepository,
     ),
     const _PlaceholderPage(label: 'Accounts'),
-    CategoriesPage(repository: widget.categoryRepository),
+    CategoriesPage(
+      repository: widget.categoryRepository,
+      transactionRepository: widget.repository,
+    ),
     const _PlaceholderPage(label: 'Recurring'),
     const _PlaceholderPage(label: 'Settings'),
   ];

@@ -9,11 +9,16 @@ class CategorySection extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.categories,
+    required this.onCategoryTap,
+    required this.onCategoryLongPressStart,
   });
 
   final String title;
   final String subtitle;
   final List<CategoryItem> categories;
+  final ValueChanged<CategoryItem> onCategoryTap;
+  final void Function(CategoryItem, LongPressStartDetails)
+  onCategoryLongPressStart;
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +47,12 @@ class CategorySection extends StatelessWidget {
           ...categories.map(
             (category) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: CategoryTile(category: category),
+              child: CategoryTile(
+                category: category,
+                onTap: () => onCategoryTap(category),
+                onLongPressStart: (details) =>
+                    onCategoryLongPressStart(category, details),
+              ),
             ),
           ),
         ],

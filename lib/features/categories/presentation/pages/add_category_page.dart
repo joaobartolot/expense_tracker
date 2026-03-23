@@ -9,7 +9,9 @@ import 'package:uuid/uuid.dart';
 const _uuid = Uuid();
 
 class AddCategoryPage extends StatefulWidget {
-  const AddCategoryPage({super.key});
+  const AddCategoryPage({super.key, this.initialCategory});
+
+  final CategoryItem? initialCategory;
 
   @override
   State<AddCategoryPage> createState() => _AddCategoryPageState();
@@ -23,12 +25,18 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
   IconData? _selectedIcon;
   bool _didTrySubmit = false;
 
+  bool get _isEditing => widget.initialCategory != null;
+
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController();
-    _descriptionController = TextEditingController();
-    _selectedIcon = Icons.sell_outlined;
+    final initialCategory = widget.initialCategory;
+    _nameController = TextEditingController(text: initialCategory?.name ?? '');
+    _descriptionController = TextEditingController(
+      text: initialCategory?.description ?? '',
+    );
+    _type = initialCategory?.type ?? CategoryType.expense;
+    _selectedIcon = initialCategory?.icon ?? Icons.sell_outlined;
     _nameController.addListener(_handleFieldChange);
     _descriptionController.addListener(_handleFieldChange);
   }
@@ -98,7 +106,7 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
     }
 
     final category = CategoryItem(
-      id: _uuid.v4(),
+      id: widget.initialCategory?.id ?? _uuid.v4(),
       name: _nameController.text.trim(),
       description: _descriptionController.text.trim(),
       type: _type,
@@ -117,7 +125,7 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        title: const Text('Add category'),
+        title: Text(_isEditing ? 'Edit category' : 'Add category'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -134,7 +142,9 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Create a new category',
+                      _isEditing
+                          ? 'Refresh this category'
+                          : 'Create a new category',
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
@@ -142,7 +152,9 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Add a category entry with a clear label, a short description, and an icon that fits.',
+                      _isEditing
+                          ? 'Adjust the label, description, type, or icon to keep this category clear and useful.'
+                          : 'Add a category entry with a clear label, a short description, and an icon that fits.',
                       style: theme.textTheme.bodyLarge?.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -212,7 +224,7 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
                       borderRadius: BorderRadius.circular(24),
                     ),
                   ),
-                  child: const Text('Save category'),
+                  child: Text(_isEditing ? 'Save changes' : 'Save category'),
                 ),
               ),
             ],

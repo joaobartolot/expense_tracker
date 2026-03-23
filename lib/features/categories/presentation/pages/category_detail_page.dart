@@ -2,63 +2,60 @@ import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/currency_formatter.dart';
 import 'package:expense_tracker/features/categories/data/category_repository.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
-import 'package:expense_tracker/features/categories/presentation/pages/category_detail_page.dart';
+import 'package:expense_tracker/features/categories/presentation/pages/add_category_page.dart';
 import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
-import 'package:expense_tracker/features/transactions/presentation/pages/add_transaction_page.dart';
 import 'package:flutter/material.dart';
 
-class TransactionDetailPage extends StatefulWidget {
-  const TransactionDetailPage({
+class CategoryDetailPage extends StatefulWidget {
+  const CategoryDetailPage({
     super.key,
-    required this.transaction,
-    required this.repository,
+    required this.category,
     required this.categoryRepository,
+    required this.transactionRepository,
   });
 
-  final TransactionItem transaction;
-  final TransactionRepository repository;
+  final CategoryItem category;
   final CategoryRepository categoryRepository;
+  final TransactionRepository transactionRepository;
 
   @override
-  State<TransactionDetailPage> createState() => _TransactionDetailPageState();
+  State<CategoryDetailPage> createState() => _CategoryDetailPageState();
 }
 
-class _TransactionDetailPageState extends State<TransactionDetailPage> {
-  List<CategoryItem> _categories = const [];
+class _CategoryDetailPageState extends State<CategoryDetailPage> {
+  List<TransactionItem> _transactions = const [];
 
   @override
   void initState() {
     super.initState();
-    _loadCategories();
+    _loadTransactions();
   }
 
-  Future<void> _loadCategories() async {
-    final categories = await widget.categoryRepository.getCategories();
+  Future<void> _loadTransactions() async {
+    final transactions = await widget.transactionRepository.getTransactions();
 
     if (!mounted) {
       return;
     }
 
     setState(() {
-      _categories = categories;
+      _transactions = transactions;
     });
   }
 
-  Future<void> _editTransaction() async {
-    final didChange = await Navigator.of(context).push<bool>(
+  Future<void> _editCategory() async {
+    final updatedCategory = await Navigator.of(context).push<CategoryItem>(
       MaterialPageRoute(
-        builder: (context) => AddTransactionPage(
-          repository: widget.repository,
-          categoryRepository: widget.categoryRepository,
-          initialTransaction: widget.transaction,
-        ),
+        builder: (context) => AddCategoryPage(initialCategory: widget.category),
       ),
     );
 
-    if (didChange != true) {
+    if (updatedCategory == null) {
       return;
     }
+
+    await widget.categoryRepository.updateCategory(updatedCategory);
 
     if (!mounted) {
       return;
@@ -67,15 +64,35 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     Navigator.of(context).pop(true);
   }
 
-  Future<void> _deleteTransaction() async {
+  Future<void> _deleteCategory() async {
+    final relatedTransactions = _relatedTransactions;
+    if (relatedTransactions.isNotEmpty) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Category in use'),
+            content: const Text(
+              'Move or delete the related transactions before removing this category.',
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
     final didConfirm = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Delete transaction?'),
-          content: const Text(
-            'This transaction will be removed from your history.',
-          ),
+          title: const Text('Delete category?'),
+          content: const Text('This category will be removed from your list.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -98,7 +115,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       return;
     }
 
-    await widget.repository.deleteTransaction(widget.transaction.id);
+    await widget.categoryRepository.deleteCategory(widget.category.id);
 
     if (!mounted) {
       return;
@@ -107,51 +124,33 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     Navigator.of(context).pop(true);
   }
 
-  Future<void> _openCategoryDetails(CategoryItem category) async {
-    final shouldReload = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (context) => CategoryDetailPage(
-          category: category,
-          categoryRepository: widget.categoryRepository,
-          transactionRepository: widget.repository,
-        ),
-      ),
-    );
-
-    if (shouldReload == true) {
-      await _loadCategories();
-    }
+  List<TransactionItem> get _relatedTransactions {
+    return _transactions
+        .where((transaction) => transaction.categoryId == widget.category.id)
+        .toList(growable: false);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final transaction = widget.transaction;
-    final category = _categories
-        .where((item) => item.id == transaction.categoryId)
-        .firstOrNull;
-    final isIncome = transaction.type == TransactionType.income;
-    final amountColor = isIncome ? AppColors.income : AppColors.textPrimary;
-    final amountPrefix = isIncome ? '+' : '-';
-    final localizations = MaterialLocalizations.of(context);
-    final fullDate = localizations.formatFullDate(transaction.date);
-    final time = localizations.formatTimeOfDay(
-      TimeOfDay.fromDateTime(transaction.date),
-    );
-    final shortDate = localizations.formatShortDate(transaction.date);
-    final categoryName = category?.name ?? 'Unknown category';
-    final categoryIcon = category?.icon ?? Icons.sell_outlined;
+    final category = widget.category;
+    final isIncome = category.type == CategoryType.income;
     final iconBackground = isIncome
         ? AppColors.incomeSurface
         : AppColors.expenseSurface;
     final iconColor = isIncome ? AppColors.income : AppColors.iconMuted;
+    final relatedTransactions = _relatedTransactions;
+    final totalAmount = relatedTransactions.fold<double>(
+      0,
+      (sum, transaction) => sum + transaction.amount,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        title: const Text('Transaction details'),
+        title: const Text('Category details'),
       ),
       body: SafeArea(
         child: ListView(
@@ -187,7 +186,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                           color: iconBackground,
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Icon(categoryIcon, color: iconColor, size: 28),
+                        child: Icon(category.icon, color: iconColor, size: 28),
                       ),
                       const Spacer(),
                       _StatusBadge(
@@ -199,7 +198,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    transaction.title,
+                    category.name,
                     style: theme.textTheme.headlineSmall?.copyWith(
                       color: AppColors.textPrimary,
                       fontWeight: FontWeight.w600,
@@ -208,16 +207,14 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    '$amountPrefix${formatCurrency(transaction.amount)}',
-                    style: theme.textTheme.displaySmall?.copyWith(
-                      color: amountColor,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.6,
+                    category.description,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    '$shortDate at $time',
+                    '${relatedTransactions.length} linked transaction${relatedTransactions.length == 1 ? '' : 's'}',
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -231,40 +228,49 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               child: Column(
                 children: [
                   _DetailTile(
-                    icon: Icons.category_outlined,
-                    label: 'Category',
-                    value: categoryName,
-                    onTap: category == null
-                        ? null
-                        : () => _openCategoryDetails(category),
-                  ),
-                  const SizedBox(height: 12),
-                  _DetailTile(
                     icon: Icons.swap_vert_rounded,
                     label: 'Type',
                     value: isIncome ? 'Income' : 'Expense',
+                  ),
+                  const SizedBox(height: 12),
+                  _DetailTile(
+                    icon: Icons.receipt_long_outlined,
+                    label: 'Transactions',
+                    value: relatedTransactions.length.toString(),
+                  ),
+                  const SizedBox(height: 12),
+                  _DetailTile(
+                    icon: Icons.savings_outlined,
+                    label: 'Total tracked',
+                    value: formatCurrency(totalAmount),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
             _SectionCard(
-              title: 'When it happened',
-              child: Column(
-                children: [
-                  _DetailTile(
-                    icon: Icons.calendar_today_outlined,
-                    label: 'Date',
-                    value: fullDate,
-                  ),
-                  const SizedBox(height: 12),
-                  _DetailTile(
-                    icon: Icons.schedule_rounded,
-                    label: 'Time',
-                    value: time,
-                  ),
-                ],
-              ),
+              title: 'Recent activity',
+              child: relatedTransactions.isEmpty
+                  ? Text(
+                      'No transactions are using this category yet.',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    )
+                  : Column(
+                      children: relatedTransactions
+                          .take(3)
+                          .map((transaction) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _RelatedTransactionTile(
+                                transaction: transaction,
+                                isIncome: isIncome,
+                              ),
+                            );
+                          })
+                          .toList(growable: false),
+                    ),
             ),
           ],
         ),
@@ -281,7 +287,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: _deleteTransaction,
+                  onPressed: _deleteCategory,
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(56),
                     foregroundColor: AppColors.dangerDark,
@@ -297,7 +303,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               Expanded(
                 flex: 2,
                 child: FilledButton(
-                  onPressed: _editTransaction,
+                  onPressed: _editCategory,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.brand,
                     foregroundColor: AppColors.white,
@@ -306,7 +312,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       borderRadius: BorderRadius.circular(22),
                     ),
                   ),
-                  child: const Text('Edit transaction'),
+                  child: const Text('Edit category'),
                 ),
               ),
             ],
@@ -357,75 +363,131 @@ class _DetailTile extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
-    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final String value;
-  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final content = Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FBFA),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Icon(icon, size: 18, color: AppColors.brandDark),
           ),
-          child: Icon(icon, size: 18, color: AppColors.brandDark),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        if (onTap != null) ...[
-          const SizedBox(width: 12),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: AppColors.textSecondary,
+              ],
+            ),
           ),
         ],
-      ],
+      ),
     );
+  }
+}
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
+class _RelatedTransactionTile extends StatelessWidget {
+  const _RelatedTransactionTile({
+    required this.transaction,
+    required this.isIncome,
+  });
+
+  final TransactionItem transaction;
+  final bool isIncome;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final localizations = MaterialLocalizations.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FBFA),
         borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF9FBFA),
-            borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: isIncome
+                  ? AppColors.incomeSurface
+                  : AppColors.expenseSurface,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              Icons.receipt_long_outlined,
+              size: 18,
+              color: isIncome ? AppColors.income : AppColors.iconMuted,
+            ),
           ),
-          child: content,
-        ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  transaction.title,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  localizations.formatShortDate(transaction.date),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            formatCurrency(transaction.amount),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: isIncome ? AppColors.income : AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

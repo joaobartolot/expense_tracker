@@ -30,10 +30,7 @@ class HiveCategoryRepository implements CategoryRepository {
   Future<void> addCategory(CategoryItem category) async {
     try {
       final categories = _readCategories()..insert(0, category);
-      await _box.put(
-        HiveStorage.categoriesKey,
-        categories.map((item) => item.toMap()).toList(growable: false),
-      );
+      await _saveCategories(categories);
       _logger.i('Saved category ${category.name}.');
     } catch (error, stackTrace) {
       _logger.e(
@@ -43,6 +40,53 @@ class HiveCategoryRepository implements CategoryRepository {
       );
       rethrow;
     }
+  }
+
+  @override
+  Future<void> updateCategory(CategoryItem category) async {
+    try {
+      final categories = _readCategories();
+      final index = categories.indexWhere((item) => item.id == category.id);
+      if (index == -1) {
+        _logger.w('Skipped update for missing category ${category.id}.');
+        return;
+      }
+
+      categories[index] = category;
+      await _saveCategories(categories);
+      _logger.i('Updated category ${category.id}.');
+    } catch (error, stackTrace) {
+      _logger.e(
+        'Failed to update category ${category.id}.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> deleteCategory(String categoryId) async {
+    try {
+      final categories = _readCategories()
+        ..removeWhere((category) => category.id == categoryId);
+      await _saveCategories(categories);
+      _logger.i('Deleted category $categoryId.');
+    } catch (error, stackTrace) {
+      _logger.e(
+        'Failed to delete category $categoryId.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> _saveCategories(List<CategoryItem> categories) {
+    return _box.put(
+      HiveStorage.categoriesKey,
+      categories.map((item) => item.toMap()).toList(growable: false),
+    );
   }
 
   List<CategoryItem> _readCategories() {
