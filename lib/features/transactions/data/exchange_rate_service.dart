@@ -16,6 +16,7 @@ class ExchangeRateService {
   const ExchangeRateService();
 
   static const _host = 'api.frankfurter.dev';
+  static final Map<String, double> _exchangeRateCache = {};
 
   Future<double> fetchExchangeRate({
     required String fromCurrencyCode,
@@ -27,6 +28,13 @@ class ExchangeRateService {
     }
 
     final formattedDate = DateFormat('yyyy-MM-dd').format(date);
+    final cacheKey =
+        '$formattedDate:${fromCurrencyCode.toUpperCase()}:${toCurrencyCode.toUpperCase()}';
+    final cachedRate = _exchangeRateCache[cacheKey];
+    if (cachedRate != null) {
+      return cachedRate;
+    }
+
     final uri = Uri.https(_host, '/v1/$formattedDate', {
       'base': fromCurrencyCode,
       'symbols': toCurrencyCode,
@@ -61,7 +69,9 @@ class ExchangeRateService {
 
       final rate = rates[toCurrencyCode];
       if (rate is num) {
-        return rate.toDouble();
+        final parsedRate = rate.toDouble();
+        _exchangeRateCache[cacheKey] = parsedRate;
+        return parsedRate;
       }
 
       throw const ExchangeRateLookupException(

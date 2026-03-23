@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:expense_tracker/core/logging/scoped_log_printer.dart';
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/currency_formatter.dart';
@@ -55,10 +57,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   bool _didTrySubmit = false;
   bool _isSaving = false;
   bool _isFormattingAmount = false;
+  String _lastFormattedAmountText = '';
   bool _isFetchingExchangeRate = false;
   double? _exchangeRateValue;
   String? _exchangeRateErrorMessage;
   int _exchangeRateRequestToken = 0;
+  Timer? _exchangeRateDebounceTimer;
 
   bool get _isEditing => widget.initialTransaction != null;
 
@@ -90,9 +94,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   0)
               .toStringAsFixed(2),
     );
+    _lastFormattedAmountText = _amountController.text;
     _type = initialTransaction?.type ?? TransactionType.expense;
     _nameController.addListener(_handleFieldChange);
-    _amountController.addListener(_formatAmountInput);
+    _amountController
+      ..addListener(_formatAmountInput)
+      ..addListener(_handleAmountChanged);
     _loadData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
@@ -110,7 +117,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       ..dispose();
     _amountController
       ..removeListener(_formatAmountInput)
+      ..removeListener(_handleAmountChanged)
       ..dispose();
+    _exchangeRateDebounceTimer?.cancel();
     super.dispose();
   }
 
@@ -229,6 +238,21 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (_didTrySubmit && mounted) {
       setState(() {});
     }
+  }
+
+  void _handleAmountChanged() {
+    final currentAmountText = _amountController.text;
+    if (_lastFormattedAmountText == currentAmountText) {
+      return;
+    }
+
+    _lastFormattedAmountText = currentAmountText;
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {});
   }
 
   List<CategoryItem> get _availableCategories =>
@@ -394,6 +418,14 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
   }
 
+  void _scheduleExchangeRateSync() {
+    _exchangeRateDebounceTimer?.cancel();
+    _exchangeRateDebounceTimer = Timer(
+      const Duration(milliseconds: 350),
+      _syncExchangeRateIfNeeded,
+    );
+  }
+
   void _setAdvancedFieldsVisible(bool value) {
     if (_showsAdvancedFields == value) {
       return;
@@ -408,6 +440,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       }
     });
 
+    if (value) {
+      _scheduleExchangeRateSync();
+      return;
+    }
+
+    _exchangeRateDebounceTimer?.cancel();
     _syncExchangeRateIfNeeded();
   }
 
@@ -422,7 +460,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       _exchangeRateErrorMessage = null;
     });
 
-    _syncExchangeRateIfNeeded();
+    _scheduleExchangeRateSync();
   }
 
   Future<void> _saveTransaction() async {
@@ -712,6 +750,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                         convertedAmount: _convertedAmountValue,
                         enteredAmount: _enteredAmountValue,
                         isFetchingExchangeRate: _isFetchingExchangeRate,
+                        hasResolvedExchangeRate: _exchangeRateValue != null,
                         exchangeRate: _exchangeRateValue,
                         exchangeRateError: _exchangeRateError,
                         onCurrencyChanged: _updateEntryCurrency,
@@ -801,6 +840,7 @@ class _AdvancedCurrencySection extends StatelessWidget {
     required this.convertedAmount,
     required this.enteredAmount,
     required this.isFetchingExchangeRate,
+    required this.hasResolvedExchangeRate,
     required this.exchangeRate,
     required this.exchangeRateError,
     required this.onCurrencyChanged,
@@ -813,6 +853,7 @@ class _AdvancedCurrencySection extends StatelessWidget {
   final double convertedAmount;
   final double enteredAmount;
   final bool isFetchingExchangeRate;
+  final bool hasResolvedExchangeRate;
   final double? exchangeRate;
   final String? exchangeRateError;
   final ValueChanged<String> onCurrencyChanged;
@@ -822,6 +863,8 @@ class _AdvancedCurrencySection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final usesForeignCurrency = entryCurrencyCode != defaultCurrencyCode;
+    final canShowConvertedAmount =
+        !usesForeignCurrency || hasResolvedExchangeRate;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -873,7 +916,36 @@ class _AdvancedCurrencySection extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                if (isFetchingExchangeRate) ...[
+                if (usesForeignCurrency && exchangeRateError != null) ...[
+                  if (canShowConvertedAmount) ...[
+                    Text(
+                      formatCurrency(
+                        convertedAmount,
+                        currencyCode: defaultCurrencyCode,
+                      ),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                  ],
+                  Text(
+                    exchangeRateError!,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.dangerDark,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton(
+                    onPressed: onRetryExchangeRate,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textPrimary,
+                      side: BorderSide(color: AppColors.border),
+                    ),
+                    child: const Text('Retry rate lookup'),
+                  ),
+                ] else if (!canShowConvertedAmount) ...[
                   Row(
                     children: [
                       const SizedBox(
@@ -891,23 +963,6 @@ class _AdvancedCurrencySection extends StatelessWidget {
                         ),
                       ),
                     ],
-                  ),
-                ] else if (usesForeignCurrency &&
-                    exchangeRateError != null) ...[
-                  Text(
-                    exchangeRateError!,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.dangerDark,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton(
-                    onPressed: onRetryExchangeRate,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textPrimary,
-                      side: BorderSide(color: AppColors.border),
-                    ),
-                    child: const Text('Retry rate lookup'),
                   ),
                 ] else ...[
                   Text(
@@ -932,6 +987,15 @@ class _AdvancedCurrencySection extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         'Rate: 1 ${entryCurrencyCode.toUpperCase()} = ${formatCurrency(exchangeRate!, currencyCode: defaultCurrencyCode)}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                    if (isFetchingExchangeRate) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Refreshing exchange rate...',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: AppColors.textSecondary,
                         ),
