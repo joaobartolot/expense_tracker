@@ -7,5 +7,6 @@ abstract class SettingsRepository {
   AppSettings getSettings();
   ValueListenable<Box<dynamic>> listenable();
   Future<void> updateDisplayName(String name);
+  Future<void> updateDefaultCurrencyCode(String code);
   Future<void> updateThemePreference(AppThemePreference preference);
 }

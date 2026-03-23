@@ -1,3 +1,4 @@
+import 'package:expense_tracker/features/accounts/domain/models/account.dart';
 import 'package:expense_tracker/core/logging/scoped_log_printer.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
@@ -12,17 +13,29 @@ class HiveStorage {
   static const String categoriesBoxName = 'categories_box';
   static const String transactionsBoxName = 'transactions_box';
   static const String settingsBoxName = 'settings_box';
+  static const String accountsBoxName = 'accounts_box';
 
   static const String categoriesKey = 'categories';
   static const String transactionsKey = 'transactions';
   static const String settingsKey = 'settings';
+  static const String accountsKey = 'accounts';
   static const _uuid = Uuid();
+  static final _uuidPattern = RegExp(
+    r'^[0-9a-fA-F]{8}-'
+    r'[0-9a-fA-F]{4}-'
+    r'[0-9a-fA-F]{4}-'
+    r'[0-9a-fA-F]{4}-'
+    r'[0-9a-fA-F]{12}$',
+  );
   static final _logger = Logger(printer: ScopedLogPrinter('hive_storage'));
 
   static Future<void> initialize() async {
     await Hive.initFlutter();
+    _pendingCategoryIdRemap = {};
+    _pendingAccountIdRemap = {};
 
     final categoriesBox = await Hive.openBox(categoriesBoxName);
+    final accountsBox = await Hive.openBox(accountsBoxName);
     final transactionsBox = await Hive.openBox(transactionsBoxName);
     final settingsBox = await Hive.openBox(settingsBoxName);
 
@@ -32,26 +45,26 @@ class HiveStorage {
         _initialCategories.map((category) => category.toMap()).toList(),
       );
     } else {
-      final storedCategories =
-          (categoriesBox.get(categoriesKey) as List<dynamic>? ?? const [])
-              .cast<Map<dynamic, dynamic>>();
+      final categoryIdRemap = await _migrateEntityIds(
+        box: categoriesBox,
+        key: categoriesKey,
+        scopeName: 'categories',
+      );
+      _pendingCategoryIdRemap = categoryIdRemap;
+    }
 
-      if (storedCategories.any((category) => category['id'] == null)) {
-        final migratedCategories = storedCategories
-            .map((category) {
-              if (category['id'] != null) {
-                return Map<dynamic, dynamic>.from(category);
-              }
-
-              return {
-                ...Map<dynamic, dynamic>.from(category),
-                'id': _uuid.v4(),
-              };
-            })
-            .toList(growable: false);
-
-        await categoriesBox.put(categoriesKey, migratedCategories);
-      }
+    if (accountsBox.get(accountsKey) == null) {
+      await accountsBox.put(
+        accountsKey,
+        _initialAccounts.map((account) => account.toMap()).toList(),
+      );
+    } else {
+      final accountIdRemap = await _migrateEntityIds(
+        box: accountsBox,
+        key: accountsKey,
+        scopeName: 'accounts',
+      );
+      _pendingAccountIdRemap = accountIdRemap;
     }
 
     if (transactionsBox.get(transactionsKey) == null) {
@@ -62,7 +75,10 @@ class HiveStorage {
     } else {
       await _migrateTransactions(
         categoriesBox: categoriesBox,
+        accountsBox: accountsBox,
         transactionsBox: transactionsBox,
+        categoryIdRemap: _pendingCategoryIdRemap,
+        accountIdRemap: _pendingAccountIdRemap,
       );
     }
 
@@ -72,8 +88,15 @@ class HiveStorage {
   }
 
   static Map<String, dynamic> get _initialSettings {
-    return {'displayName': '', 'themePreference': 'system'};
+    return {
+      'displayName': '',
+      'themePreference': 'system',
+      'defaultCurrencyCode': 'EUR',
+    };
   }
+
+  static Map<String, String> _pendingCategoryIdRemap = {};
+  static Map<String, String> _pendingAccountIdRemap = {};
 
   static List<CategoryItem> get _initialCategories {
     return const [
@@ -132,59 +155,113 @@ class HiveStorage {
   static List<TransactionItem> get _initialTransactions {
     return [
       TransactionItem(
-        id: 'transaction_0001',
+        id: 'b830b4ce-7fdc-4db0-86f1-d011c20d9001',
         title: 'Salary',
         categoryId: '9a4d31a8-5e0f-4c44-8ca7-543700196004',
+        accountId: 'b830b4ce-7fdc-4db0-86f1-d011c20da001',
         amount: 2400.00,
+        currencyCode: 'EUR',
         date: DateTime.now().subtract(const Duration(hours: 2)),
         type: TransactionType.income,
       ),
       TransactionItem(
-        id: 'transaction_0002',
+        id: 'b830b4ce-7fdc-4db0-86f1-d011c20d9002',
         title: 'Groceries',
         categoryId: '9a4d31a8-5e0f-4c44-8ca7-543700196001',
+        accountId: 'b830b4ce-7fdc-4db0-86f1-d011c20da001',
         amount: 52.30,
+        currencyCode: 'EUR',
         date: DateTime.now().subtract(const Duration(hours: 5)),
         type: TransactionType.expense,
       ),
       TransactionItem(
-        id: 'transaction_0003',
+        id: 'b830b4ce-7fdc-4db0-86f1-d011c20d9003',
         title: 'Coffee',
         categoryId: '9a4d31a8-5e0f-4c44-8ca7-543700196003',
+        accountId: 'b830b4ce-7fdc-4db0-86f1-d011c20da004',
         amount: 3.80,
+        currencyCode: 'EUR',
         date: DateTime.now().subtract(const Duration(days: 1, hours: 1)),
         type: TransactionType.expense,
       ),
       TransactionItem(
-        id: 'transaction_0004',
+        id: 'b830b4ce-7fdc-4db0-86f1-d011c20d9004',
         title: 'Netflix',
         categoryId: '9a4d31a8-5e0f-4c44-8ca7-543700196006',
+        accountId: 'b830b4ce-7fdc-4db0-86f1-d011c20da004',
         amount: 11.99,
+        currencyCode: 'EUR',
         date: DateTime.now().subtract(const Duration(days: 1, hours: 4)),
         type: TransactionType.expense,
       ),
       TransactionItem(
-        id: 'transaction_0005',
+        id: 'b830b4ce-7fdc-4db0-86f1-d011c20d9005',
         title: 'Dinner',
         categoryId: '9a4d31a8-5e0f-4c44-8ca7-543700196003',
+        accountId: 'b830b4ce-7fdc-4db0-86f1-d011c20da001',
         amount: 27.40,
+        currencyCode: 'EUR',
         date: DateTime.now().subtract(const Duration(days: 3, hours: 2)),
         type: TransactionType.expense,
       ),
       TransactionItem(
-        id: 'transaction_0006',
+        id: 'b830b4ce-7fdc-4db0-86f1-d011c20d9006',
         title: 'Refund',
         categoryId: '9a4d31a8-5e0f-4c44-8ca7-543700196007',
+        accountId: 'b830b4ce-7fdc-4db0-86f1-d011c20da001',
         amount: 18.00,
+        currencyCode: 'EUR',
         date: DateTime.now().subtract(const Duration(days: 6)),
         type: TransactionType.income,
       ),
     ];
   }
 
+  static List<Account> get _initialAccounts {
+    return const [
+      Account(
+        id: 'b830b4ce-7fdc-4db0-86f1-d011c20da001',
+        name: 'Main Bank',
+        type: AccountType.bank,
+        balance: 1850.45,
+        currencyCode: 'EUR',
+        description: 'Daily spending and incoming salary',
+      ),
+      Account(
+        id: 'b830b4ce-7fdc-4db0-86f1-d011c20da002',
+        name: 'Wallet',
+        type: AccountType.cash,
+        balance: 120.00,
+        currencyCode: 'EUR',
+        description: 'Cash on hand',
+      ),
+      Account(
+        id: 'b830b4ce-7fdc-4db0-86f1-d011c20da003',
+        name: 'Travel Savings',
+        type: AccountType.savings,
+        balance: 940.00,
+        currencyCode: 'EUR',
+        description: 'Set aside for future trips',
+      ),
+      Account(
+        id: 'b830b4ce-7fdc-4db0-86f1-d011c20da004',
+        name: 'Everyday Card',
+        type: AccountType.creditCard,
+        balance: -286.70,
+        currencyCode: 'EUR',
+        description: 'Monthly card spending',
+        creditCardDueDay: 12,
+        paymentTracking: CreditCardPaymentTracking.manual,
+      ),
+    ];
+  }
+
   static Future<void> _migrateTransactions({
     required Box<dynamic> categoriesBox,
+    required Box<dynamic> accountsBox,
     required Box<dynamic> transactionsBox,
+    required Map<String, String> categoryIdRemap,
+    required Map<String, String> accountIdRemap,
   }) async {
     final storedCategories =
         (categoriesBox.get(categoriesKey) as List<dynamic>? ?? const [])
@@ -192,27 +269,54 @@ class HiveStorage {
     final storedTransactions =
         (transactionsBox.get(transactionsKey) as List<dynamic>? ?? const [])
             .cast<Map<dynamic, dynamic>>();
+    final storedAccounts =
+        (accountsBox.get(accountsKey) as List<dynamic>? ?? const [])
+            .cast<Map<dynamic, dynamic>>();
 
     final categories = storedCategories.map(CategoryItem.fromMap).toList();
+    final accounts = storedAccounts.map(Account.fromMap).toList();
     final categoriesByName = {
       for (final category in categories) category.name: category,
     };
+    final accountsById = {for (final account in accounts) account.id: account};
+    final defaultAccountId = accounts.isEmpty ? '' : accounts.first.id;
     final categoryIds = categories.map((category) => category.id).toSet();
+    final accountIds = accounts.map((account) => account.id).toSet();
     var categoriesChanged = false;
 
     final migratedTransactions = storedTransactions
         .map((transaction) {
-          final existingCategoryId = transaction['categoryId'] as String?;
+          final existingAccountId = _remapId(
+            transaction['accountId'] as String?,
+            accountIdRemap,
+          );
+          final existingCategoryId = _remapId(
+            transaction['categoryId'] as String?,
+            categoryIdRemap,
+          );
+          final existingTransactionId = transaction['id'] as String?;
+          final resolvedTransactionId = _normalizeId(existingTransactionId);
           if (existingCategoryId != null &&
               existingCategoryId.isNotEmpty &&
-              categoryIds.contains(existingCategoryId)) {
+              categoryIds.contains(existingCategoryId) &&
+              existingAccountId != null &&
+              existingAccountId.isNotEmpty &&
+              accountIds.contains(existingAccountId)) {
             return {
-              'id': transaction['id'],
+              'id': resolvedTransactionId,
               'title': transaction['title'],
               'categoryId': existingCategoryId,
+              'accountId': existingAccountId,
               'amount': transaction['amount'],
+              'currencyCode':
+                  transaction['currencyCode'] ??
+                  accountsById[existingAccountId]?.currencyCode ??
+                  'EUR',
               'date': transaction['date'],
               'type': transaction['type'],
+              'foreignAmount': transaction['foreignAmount'],
+              'foreignCurrencyCode': transaction['foreignCurrencyCode'],
+              'exchangeRate': transaction['exchangeRate'],
             };
           }
 
@@ -244,13 +348,25 @@ class HiveStorage {
             );
           }
 
+          final resolvedAccountId = accountIds.contains(existingAccountId)
+              ? existingAccountId
+              : defaultAccountId;
+
           return {
-            'id': transaction['id'],
+            'id': resolvedTransactionId,
             'title': transaction['title'],
             'categoryId': category?.id ?? '',
+            'accountId': resolvedAccountId,
             'amount': transaction['amount'],
+            'currencyCode':
+                transaction['currencyCode'] ??
+                accountsById[resolvedAccountId]?.currencyCode ??
+                'EUR',
             'date': transaction['date'],
             'type': transaction['type'],
+            'foreignAmount': transaction['foreignAmount'],
+            'foreignCurrencyCode': transaction['foreignCurrencyCode'],
+            'exchangeRate': transaction['exchangeRate'],
           };
         })
         .toList(growable: false);
@@ -264,7 +380,18 @@ class HiveStorage {
 
     final hasLegacyTransactions = storedTransactions.any(
       (transaction) =>
-          transaction['categoryId'] == null || transaction['subtitle'] != null,
+          transaction['categoryId'] == null ||
+          transaction['subtitle'] != null ||
+          transaction['accountId'] == null ||
+          transaction['currencyCode'] == null ||
+          !_isUuid(transaction['id'] as String?) ||
+          categoryIdRemap.containsKey(
+            transaction['categoryId'] as String? ?? '',
+          ) ||
+          accountIdRemap.containsKey(
+            transaction['accountId'] as String? ?? '',
+          ) ||
+          !accountIds.contains(transaction['accountId'] as String? ?? ''),
     );
 
     if (hasLegacyTransactions) {
@@ -284,5 +411,65 @@ class HiveStorage {
       fontPackage: map['fontPackage'] as String?,
       matchTextDirection: map['matchTextDirection'] as bool? ?? false,
     );
+  }
+
+  static Future<Map<String, String>> _migrateEntityIds({
+    required Box<dynamic> box,
+    required String key,
+    required String scopeName,
+  }) async {
+    final storedItems = (box.get(key) as List<dynamic>? ?? const [])
+        .cast<Map<dynamic, dynamic>>();
+
+    final hasLegacyIds = storedItems.any(
+      (item) => !_isUuid(item['id'] as String?),
+    );
+    if (!hasLegacyIds) {
+      return const {};
+    }
+
+    final idRemap = <String, String>{};
+    final migratedItems = storedItems
+        .map((item) {
+          final existingId = item['id'] as String?;
+          final migratedId = _normalizeId(existingId);
+
+          if (existingId != null &&
+              existingId.isNotEmpty &&
+              existingId != migratedId) {
+            idRemap[existingId] = migratedId;
+          }
+
+          return {...Map<dynamic, dynamic>.from(item), 'id': migratedId};
+        })
+        .toList(growable: false);
+
+    await box.put(key, migratedItems);
+    _logger.i('Migrated $scopeName IDs to UUID format.');
+    return idRemap;
+  }
+
+  static bool _isUuid(String? value) {
+    if (value == null || value.isEmpty) {
+      return false;
+    }
+
+    return _uuidPattern.hasMatch(value);
+  }
+
+  static String _normalizeId(String? value) {
+    if (_isUuid(value)) {
+      return value!;
+    }
+
+    return _uuid.v4();
+  }
+
+  static String? _remapId(String? value, Map<String, String> idRemap) {
+    if (value == null || value.isEmpty) {
+      return value;
+    }
+
+    return idRemap[value] ?? value;
   }
 }

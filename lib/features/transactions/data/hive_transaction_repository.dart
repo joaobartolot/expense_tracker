@@ -2,7 +2,8 @@ import 'package:expense_tracker/core/logging/scoped_log_printer.dart';
 import 'package:expense_tracker/core/storage/hive_storage.dart';
 import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
-import 'package:hive/hive.dart';
+import 'package:flutter/foundation.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:logger/logger.dart';
 import 'package:uuid/uuid.dart';
 
@@ -27,6 +28,11 @@ class HiveTransactionRepository implements TransactionRepository {
       );
       rethrow;
     }
+  }
+
+  @override
+  ValueListenable<Box<dynamic>> listenable() {
+    return _box.listenable(keys: [HiveStorage.transactionsKey]);
   }
 
   @override

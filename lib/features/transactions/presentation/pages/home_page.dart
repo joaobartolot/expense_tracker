@@ -1,5 +1,8 @@
+import 'package:expense_tracker/core/widgets/context_action_menu.dart';
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/date_label_formatter.dart';
+import 'package:expense_tracker/features/accounts/data/account_repository.dart';
+import 'package:expense_tracker/features/accounts/domain/models/account.dart';
 import 'package:expense_tracker/features/categories/data/category_repository.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
 import 'package:expense_tracker/features/settings/data/settings_repository.dart';
@@ -20,11 +23,13 @@ class HomePage extends StatefulWidget {
     required this.repository,
     required this.categoryRepository,
     required this.settingsRepository,
+    required this.accountRepository,
   });
 
   final TransactionRepository repository;
   final CategoryRepository categoryRepository;
   final SettingsRepository settingsRepository;
+  final AccountRepository accountRepository;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -33,6 +38,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   List<TransactionItem> _transactions = const [];
   List<CategoryItem> _categories = const [];
+  List<Account> _accounts = const [];
 
   @override
   void initState() {
@@ -43,6 +49,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadTransactions() async {
     final transactions = await widget.repository.getTransactions();
     final categories = await widget.categoryRepository.getCategories();
+    final accounts = await widget.accountRepository.getAccounts();
 
     if (!mounted) {
       return;
@@ -51,15 +58,23 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _transactions = transactions;
       _categories = categories;
+      _accounts = accounts;
     });
   }
 
   Future<void> _addTransaction() async {
+    if (_accounts.isEmpty) {
+      _showAccountsRequiredMessage();
+      return;
+    }
+
     final shouldReload = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (context) => AddTransactionPage(
           repository: widget.repository,
           categoryRepository: widget.categoryRepository,
+          accountRepository: widget.accountRepository,
+          settingsRepository: widget.settingsRepository,
         ),
       ),
     );
@@ -76,6 +91,8 @@ class _HomePageState extends State<HomePage> {
           transaction: transaction,
           repository: widget.repository,
           categoryRepository: widget.categoryRepository,
+          accountRepository: widget.accountRepository,
+          settingsRepository: widget.settingsRepository,
         ),
       ),
     );
@@ -91,6 +108,8 @@ class _HomePageState extends State<HomePage> {
         builder: (context) => AddTransactionPage(
           repository: widget.repository,
           categoryRepository: widget.categoryRepository,
+          accountRepository: widget.accountRepository,
+          settingsRepository: widget.settingsRepository,
           initialTransaction: transaction,
         ),
       ),
@@ -136,75 +155,34 @@ class _HomePageState extends State<HomePage> {
     await _loadTransactions();
   }
 
+  void _showAccountsRequiredMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Create an account before adding your first transaction.',
+        ),
+      ),
+    );
+  }
+
   Future<void> _showTransactionActionMenu(
     TransactionItem transaction,
     LongPressStartDetails details,
   ) async {
-    final overlay =
-        Overlay.of(context).context.findRenderObject()! as RenderBox;
-    const horizontalPadding = 12.0;
-    const verticalPadding = 12.0;
-    const menuWidth = 152.0;
-    const menuHeight = 88.0;
-    const menuOffset = 8.0;
-
-    final fingerPosition = details.globalPosition;
-    final maxLeft = overlay.size.width - menuWidth - horizontalPadding;
-    final maxTop = overlay.size.height - menuHeight - verticalPadding;
-
-    final left = (fingerPosition.dx - (menuWidth / 2))
-        .clamp(
-          horizontalPadding,
-          maxLeft < horizontalPadding ? horizontalPadding : maxLeft,
-        )
-        .toDouble();
-
-    final prefersBelow =
-        fingerPosition.dy + menuHeight + menuOffset <=
-        overlay.size.height - verticalPadding;
-    final rawTop = prefersBelow
-        ? fingerPosition.dy + menuOffset
-        : fingerPosition.dy - menuHeight - menuOffset;
-    final top = rawTop
-        .clamp(
-          verticalPadding,
-          maxTop < verticalPadding ? verticalPadding : maxTop,
-        )
-        .toDouble();
-
-    final selectedAction = await showMenu<_TransactionListAction>(
+    final selectedAction = await showContextActionMenu<_TransactionListAction>(
       context: context,
-      color: AppColors.surface,
-      elevation: 10,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      position: RelativeRect.fromLTRB(
-        left,
-        top,
-        overlay.size.width - left - menuWidth,
-        overlay.size.height - top - menuHeight,
-      ),
-      items: [
-        PopupMenuItem(
+      globalPosition: details.globalPosition,
+      items: const [
+        ContextActionMenuItem(
           value: _TransactionListAction.edit,
-          height: 40,
-          child: Row(
-            children: [
-              Icon(Icons.edit_outlined, size: 18, color: AppColors.textPrimary),
-              SizedBox(width: 10),
-              Text('Edit'),
-            ],
-          ),
+          label: 'Edit',
+          icon: Icons.edit_outlined,
         ),
-        PopupMenuItem(
+        ContextActionMenuItem(
           value: _TransactionListAction.delete,
-          height: 40,
-          child: Row(
-            children: [
-              Icon(Icons.delete_outline, size: 18, color: AppColors.danger),
-              SizedBox(width: 10),
-              Text('Delete', style: TextStyle(color: AppColors.dangerDark)),
-            ],
-          ),
+          label: 'Delete',
+          icon: Icons.delete_outline,
+          foregroundColor: AppColors.dangerDark,
         ),
       ],
     );
@@ -232,6 +210,7 @@ class _HomePageState extends State<HomePage> {
     final categoriesById = {
       for (final category in _categories) category.id: category,
     };
+    final accountsById = {for (final account in _accounts) account.id: account};
     final balance = _transactions.fold<double>(
       0,
       (sum, transaction) => sum + transaction.signedAmount,
@@ -256,7 +235,12 @@ class _HomePageState extends State<HomePage> {
             },
           ),
           const SizedBox(height: 20),
-          BalanceCard(balance: balance),
+          BalanceCard(
+            balance: balance,
+            currencyCode: widget.settingsRepository
+                .getSettings()
+                .defaultCurrencyCode,
+          ),
           const SizedBox(height: 28),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -292,6 +276,9 @@ class _HomePageState extends State<HomePage> {
               categoryIconFor: (transaction) =>
                   categoriesById[transaction.categoryId]?.icon ??
                   Icons.sell_outlined,
+              accountNameFor: (transaction) =>
+                  accountsById[transaction.accountId]?.name ??
+                  'Unknown account',
               onTransactionTap: _openTransactionDetails,
               onTransactionLongPressStart: _showTransactionActionMenu,
             ),

@@ -303,6 +303,10 @@ Guidelines:
 * Prefer composition over duplication
 * Maintain consistent spacing system
 
+### 🆔 Identifier Strategy
+
+* All persisted entity IDs must use UUIDs
+
 ---
 
 ### ⚡ Interaction Design

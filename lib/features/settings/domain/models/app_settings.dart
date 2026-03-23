@@ -1,10 +1,15 @@
 import 'package:expense_tracker/features/settings/domain/models/app_theme_preference.dart';
 
 class AppSettings {
-  const AppSettings({required this.displayName, required this.themePreference});
+  const AppSettings({
+    required this.displayName,
+    required this.themePreference,
+    required this.defaultCurrencyCode,
+  });
 
   final String displayName;
   final AppThemePreference themePreference;
+  final String defaultCurrencyCode;
 
   String get greeting {
     final trimmedName = displayName.trim();
@@ -18,10 +23,12 @@ class AppSettings {
   AppSettings copyWith({
     String? displayName,
     AppThemePreference? themePreference,
+    String? defaultCurrencyCode,
   }) {
     return AppSettings(
       displayName: displayName ?? this.displayName,
       themePreference: themePreference ?? this.themePreference,
+      defaultCurrencyCode: defaultCurrencyCode ?? this.defaultCurrencyCode,
     );
   }
 
@@ -29,6 +36,7 @@ class AppSettings {
     return {
       'displayName': displayName,
       'themePreference': themePreference.storageValue,
+      'defaultCurrencyCode': defaultCurrencyCode,
     };
   }
 
@@ -40,6 +48,10 @@ class AppSettings {
       themePreference: appThemePreferenceFromStorage(
         normalizedMap['themePreference'] as String?,
       ),
+      defaultCurrencyCode:
+          (normalizedMap['defaultCurrencyCode'] as String? ?? 'EUR')
+              .trim()
+              .toUpperCase(),
     );
   }
 }

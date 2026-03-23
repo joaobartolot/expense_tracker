@@ -1,0 +1,113 @@
+import 'package:flutter/material.dart';
+
+enum AccountType { bank, cash, savings, creditCard }
+
+enum CreditCardPaymentTracking { manual, automatic }
+
+class Account {
+  const Account({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.balance,
+    required this.currencyCode,
+    this.description = '',
+    this.creditCardDueDay,
+    this.paymentTracking,
+  });
+
+  final String id;
+  final String name;
+  final AccountType type;
+  final double balance;
+  final String currencyCode;
+  final String description;
+  final int? creditCardDueDay;
+  final CreditCardPaymentTracking? paymentTracking;
+
+  bool get isCreditCard => type == AccountType.creditCard;
+
+  String get typeLabel => switch (type) {
+    AccountType.bank => 'Bank account',
+    AccountType.cash => 'Cash',
+    AccountType.savings => 'Savings',
+    AccountType.creditCard => 'Credit card',
+  };
+
+  IconData get icon => switch (type) {
+    AccountType.bank => Icons.account_balance_outlined,
+    AccountType.cash => Icons.payments_outlined,
+    AccountType.savings => Icons.savings_outlined,
+    AccountType.creditCard => Icons.credit_card_outlined,
+  };
+
+  String? get paymentTrackingLabel => switch (paymentTracking) {
+    CreditCardPaymentTracking.manual => 'Manual payments',
+    CreditCardPaymentTracking.automatic => 'Automatic payments',
+    null => null,
+  };
+
+  Map<String, Object?> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'type': type.name,
+      'balance': balance,
+      'currencyCode': currencyCode,
+      'description': description,
+      'creditCardDueDay': creditCardDueDay,
+      'paymentTracking': paymentTracking?.name,
+    };
+  }
+
+  factory Account.fromMap(Map<dynamic, dynamic> map) {
+    return Account(
+      id: map['id'] as String? ?? '',
+      name: map['name'] as String? ?? '',
+      type: AccountType.values.byName(map['type'] as String? ?? 'bank'),
+      balance: (map['balance'] as num?)?.toDouble() ?? 0,
+      currencyCode: map['currencyCode'] as String? ?? 'EUR',
+      description: map['description'] as String? ?? '',
+      creditCardDueDay: map['creditCardDueDay'] as int?,
+      paymentTracking: _paymentTrackingFromName(
+        map['paymentTracking'] as String?,
+      ),
+    );
+  }
+
+  Account copyWith({
+    String? id,
+    String? name,
+    AccountType? type,
+    double? balance,
+    String? currencyCode,
+    String? description,
+    int? creditCardDueDay,
+    bool clearCreditCardDueDay = false,
+    CreditCardPaymentTracking? paymentTracking,
+    bool clearPaymentTracking = false,
+  }) {
+    return Account(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      balance: balance ?? this.balance,
+      currencyCode: currencyCode ?? this.currencyCode,
+      description: description ?? this.description,
+      creditCardDueDay: clearCreditCardDueDay
+          ? null
+          : creditCardDueDay ?? this.creditCardDueDay,
+      paymentTracking: clearPaymentTracking
+          ? null
+          : paymentTracking ?? this.paymentTracking,
+    );
+  }
+
+  static CreditCardPaymentTracking? _paymentTrackingFromName(String? value) {
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+
+    return CreditCardPaymentTracking.values.byName(value);
+  }
+}

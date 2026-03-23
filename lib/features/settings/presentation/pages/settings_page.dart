@@ -1,5 +1,7 @@
 import 'package:expense_tracker/core/theme/app_colors.dart';
+import 'package:expense_tracker/core/utils/supported_currencies.dart';
 import 'package:expense_tracker/core/widgets/app_text_input.dart';
+import 'package:expense_tracker/core/widgets/custom_dropdown_selector.dart';
 import 'package:expense_tracker/features/settings/data/settings_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
@@ -15,15 +17,16 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   late final TextEditingController _nameController;
+  late String _selectedCurrencyCode;
   String? _nameErrorText;
-  bool _isSavingName = false;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(
-      text: widget.repository.getSettings().displayName,
-    );
+    final settings = widget.repository.getSettings();
+    _nameController = TextEditingController(text: settings.displayName);
+    _selectedCurrencyCode = settings.defaultCurrencyCode;
   }
 
   @override
@@ -32,7 +35,7 @@ class _SettingsPageState extends State<SettingsPage> {
     super.dispose();
   }
 
-  Future<void> _saveName() async {
+  Future<void> _saveSettings() async {
     final trimmedName = _nameController.text.trim();
     if (trimmedName.length > 24) {
       setState(() {
@@ -42,18 +45,19 @@ class _SettingsPageState extends State<SettingsPage> {
     }
 
     setState(() {
-      _isSavingName = true;
+      _isSaving = true;
       _nameErrorText = null;
     });
 
     await widget.repository.updateDisplayName(trimmedName);
+    await widget.repository.updateDefaultCurrencyCode(_selectedCurrencyCode);
 
     if (!mounted) {
       return;
     }
 
     setState(() {
-      _isSavingName = false;
+      _isSaving = false;
       _nameController.value = TextEditingValue(
         text: trimmedName,
         selection: TextSelection.collapsed(offset: trimmedName.length),
@@ -77,7 +81,16 @@ class _SettingsPageState extends State<SettingsPage> {
           final settings = widget.repository.getSettings();
           final previewGreeting = settings.copyWith(
             displayName: _nameController.text.trim(),
+            defaultCurrencyCode: _selectedCurrencyCode,
           );
+          final currencyItems = supportedCurrencies
+              .map(
+                (currency) => DropdownSelectorItem<String>(
+                  value: currency.code,
+                  label: '${currency.code} · ${currency.name}',
+                ),
+              )
+              .toList(growable: false);
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
@@ -91,7 +104,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Keep the app personal.',
+                'Keep the app personal and set the default currency for new entries.',
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: colors.textSecondary,
                 ),
@@ -123,12 +136,31 @@ class _SettingsPageState extends State<SettingsPage> {
                       errorText: _nameErrorText,
                       textCapitalization: TextCapitalization.words,
                     ),
+                    const SizedBox(height: 18),
+                    CustomDropdownSelector<String>(
+                      label: 'Default currency',
+                      hintText: 'Choose a currency',
+                      items: currencyItems,
+                      value: _selectedCurrencyCode,
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedCurrencyCode = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'This will be the starting currency for new accounts and advanced transaction entry, but you can still change it per item.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
-                        onPressed: _isSavingName ? null : _saveName,
-                        child: Text(_isSavingName ? 'Saving...' : 'Save name'),
+                        onPressed: _isSaving ? null : _saveSettings,
+                        child: Text(_isSaving ? 'Saving...' : 'Save settings'),
                       ),
                     ),
                   ],

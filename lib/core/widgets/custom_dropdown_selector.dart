@@ -206,11 +206,9 @@ class _DropdownSelectorContent<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Row(
-      children: [
-        if (item.icon case final icon) ...[
+    if (item.icon case final IconData icon) {
+      return Row(
+        children: [
           Container(
             width: 36,
             height: 36,
@@ -221,30 +219,43 @@ class _DropdownSelectorContent<T> extends StatelessWidget {
             child: Icon(icon, size: 18, color: AppColors.iconMuted),
           ),
           const SizedBox(width: 12),
+          Expanded(child: _DropdownSelectorText(item: item)),
         ],
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                item.label,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              if (item.subtitle case final String subtitle) ...[
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ],
+      );
+    }
+
+    return _DropdownSelectorText(item: item);
+  }
+}
+
+class _DropdownSelectorText<T> extends StatelessWidget {
+  const _DropdownSelectorText({required this.item});
+
+  final DropdownSelectorItem<T> item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          item.label,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
           ),
         ),
+        if (item.subtitle case final String subtitle) ...[
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
       ],
     );
   }

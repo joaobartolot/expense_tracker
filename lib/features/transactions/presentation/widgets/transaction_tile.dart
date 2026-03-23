@@ -9,6 +9,7 @@ class TransactionTile extends StatelessWidget {
     required this.transaction,
     required this.categoryName,
     required this.categoryIcon,
+    required this.accountName,
     this.onTap,
     this.onLongPressStart,
   });
@@ -16,6 +17,7 @@ class TransactionTile extends StatelessWidget {
   final TransactionItem transaction;
   final String categoryName;
   final IconData categoryIcon;
+  final String accountName;
   final VoidCallback? onTap;
   final GestureLongPressStartCallback? onLongPressStart;
 
@@ -64,7 +66,7 @@ class TransactionTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        categoryName,
+                        '$categoryName · $accountName',
                         style: TextStyle(
                           fontSize: 14,
                           color: AppColors.textSecondary,
@@ -75,7 +77,7 @@ class TransactionTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  '${isIncome ? '+' : '-'}${formatCurrency(transaction.amount)}',
+                  '${isIncome ? '+' : '-'}${formatCurrency(transaction.amount, currencyCode: transaction.currencyCode)}',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,

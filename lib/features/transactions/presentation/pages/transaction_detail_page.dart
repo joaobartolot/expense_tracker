@@ -1,8 +1,11 @@
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/currency_formatter.dart';
+import 'package:expense_tracker/features/accounts/data/account_repository.dart';
+import 'package:expense_tracker/features/accounts/domain/models/account.dart';
 import 'package:expense_tracker/features/categories/data/category_repository.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
 import 'package:expense_tracker/features/categories/presentation/pages/category_detail_page.dart';
+import 'package:expense_tracker/features/settings/data/settings_repository.dart';
 import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:expense_tracker/features/transactions/presentation/pages/add_transaction_page.dart';
@@ -14,11 +17,15 @@ class TransactionDetailPage extends StatefulWidget {
     required this.transaction,
     required this.repository,
     required this.categoryRepository,
+    required this.accountRepository,
+    required this.settingsRepository,
   });
 
   final TransactionItem transaction;
   final TransactionRepository repository;
   final CategoryRepository categoryRepository;
+  final AccountRepository accountRepository;
+  final SettingsRepository settingsRepository;
 
   @override
   State<TransactionDetailPage> createState() => _TransactionDetailPageState();
@@ -26,14 +33,16 @@ class TransactionDetailPage extends StatefulWidget {
 
 class _TransactionDetailPageState extends State<TransactionDetailPage> {
   List<CategoryItem> _categories = const [];
+  List<Account> _accounts = const [];
 
   @override
   void initState() {
     super.initState();
-    _loadCategories();
+    _loadData();
   }
 
-  Future<void> _loadCategories() async {
+  Future<void> _loadData() async {
+    final accounts = await widget.accountRepository.getAccounts();
     final categories = await widget.categoryRepository.getCategories();
 
     if (!mounted) {
@@ -41,6 +50,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     }
 
     setState(() {
+      _accounts = accounts;
       _categories = categories;
     });
   }
@@ -51,6 +61,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         builder: (context) => AddTransactionPage(
           repository: widget.repository,
           categoryRepository: widget.categoryRepository,
+          accountRepository: widget.accountRepository,
+          settingsRepository: widget.settingsRepository,
           initialTransaction: widget.transaction,
         ),
       ),
@@ -119,7 +131,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     );
 
     if (shouldReload == true) {
-      await _loadCategories();
+      await _loadData();
     }
   }
 
@@ -129,6 +141,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     final transaction = widget.transaction;
     final category = _categories
         .where((item) => item.id == transaction.categoryId)
+        .firstOrNull;
+    final account = _accounts
+        .where((item) => item.id == transaction.accountId)
         .firstOrNull;
     final isIncome = transaction.type == TransactionType.income;
     final amountColor = isIncome ? AppColors.income : AppColors.textPrimary;
@@ -140,7 +155,14 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     );
     final shortDate = localizations.formatShortDate(transaction.date);
     final categoryName = category?.name ?? 'Unknown category';
+    final accountName = account?.name ?? 'Unknown account';
     final categoryIcon = category?.icon ?? Icons.sell_outlined;
+    final defaultCurrencyCode = widget.settingsRepository
+        .getSettings()
+        .defaultCurrencyCode;
+    final enteredCurrencyCode =
+        transaction.foreignCurrencyCode ?? transaction.currencyCode;
+    final enteredAmount = transaction.foreignAmount ?? transaction.amount;
     final iconBackground = isIncome
         ? AppColors.incomeSurface
         : AppColors.expenseSurface;
@@ -208,7 +230,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    '$amountPrefix${formatCurrency(transaction.amount)}',
+                    '$amountPrefix${formatCurrency(transaction.amount, currencyCode: transaction.currencyCode)}',
                     style: theme.textTheme.displaySmall?.copyWith(
                       color: amountColor,
                       fontWeight: FontWeight.w700,
@@ -238,6 +260,41 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                         ? null
                         : () => _openCategoryDetails(category),
                   ),
+                  const SizedBox(height: 12),
+                  _DetailTile(
+                    icon: Icons.account_balance_wallet_outlined,
+                    label: 'Account',
+                    value: accountName,
+                  ),
+                  const SizedBox(height: 12),
+                  _DetailTile(
+                    icon: Icons.euro_symbol_rounded,
+                    label: transaction.hasForeignCurrency
+                        ? 'Saved amount'
+                        : 'Amount',
+                    value: formatCurrency(
+                      transaction.amount,
+                      currencyCode: transaction.currencyCode,
+                    ),
+                  ),
+                  if (transaction.hasForeignCurrency) ...[
+                    const SizedBox(height: 12),
+                    _DetailTile(
+                      icon: Icons.currency_exchange_rounded,
+                      label: 'Entered amount',
+                      value: formatCurrency(
+                        enteredAmount,
+                        currencyCode: enteredCurrencyCode,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _DetailTile(
+                      icon: Icons.sync_alt_rounded,
+                      label: 'Exchange rate',
+                      value:
+                          '1 ${enteredCurrencyCode.toUpperCase()} = ${formatCurrency(transaction.exchangeRate ?? 0, currencyCode: defaultCurrencyCode)}',
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   _DetailTile(
                     icon: Icons.swap_vert_rounded,

@@ -29,6 +29,15 @@ class HiveSettingsRepository implements SettingsRepository {
   }
 
   @override
+  Future<void> updateDefaultCurrencyCode(String code) async {
+    final settings = getSettings();
+    await _box.put(
+      HiveStorage.settingsKey,
+      settings.copyWith(defaultCurrencyCode: code.trim().toUpperCase()).toMap(),
+    );
+  }
+
+  @override
   Future<void> updateThemePreference(AppThemePreference preference) async {
     final settings = getSettings();
     await _box.put(

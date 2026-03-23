@@ -1,4 +1,5 @@
 import 'package:expense_tracker/core/theme/app_colors.dart';
+import 'package:expense_tracker/core/widgets/context_action_menu.dart';
 import 'package:expense_tracker/features/categories/data/category_repository.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
 import 'package:expense_tracker/features/categories/presentation/pages/add_category_page.dart';
@@ -174,71 +175,20 @@ class _CategoriesPageState extends State<CategoriesPage> {
     CategoryItem category,
     LongPressStartDetails details,
   ) async {
-    final overlay =
-        Overlay.of(context).context.findRenderObject()! as RenderBox;
-    const horizontalPadding = 12.0;
-    const verticalPadding = 12.0;
-    const menuWidth = 152.0;
-    const menuHeight = 88.0;
-    const menuOffset = 8.0;
-
-    final fingerPosition = details.globalPosition;
-    final maxLeft = overlay.size.width - menuWidth - horizontalPadding;
-    final maxTop = overlay.size.height - menuHeight - verticalPadding;
-
-    final left = (fingerPosition.dx - (menuWidth / 2))
-        .clamp(
-          horizontalPadding,
-          maxLeft < horizontalPadding ? horizontalPadding : maxLeft,
-        )
-        .toDouble();
-
-    final prefersBelow =
-        fingerPosition.dy + menuHeight + menuOffset <=
-        overlay.size.height - verticalPadding;
-    final rawTop = prefersBelow
-        ? fingerPosition.dy + menuOffset
-        : fingerPosition.dy - menuHeight - menuOffset;
-    final top = rawTop
-        .clamp(
-          verticalPadding,
-          maxTop < verticalPadding ? verticalPadding : maxTop,
-        )
-        .toDouble();
-
-    final selectedAction = await showMenu<_CategoryListAction>(
+    final selectedAction = await showContextActionMenu<_CategoryListAction>(
       context: context,
-      color: AppColors.surface,
-      elevation: 10,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      position: RelativeRect.fromLTRB(
-        left,
-        top,
-        overlay.size.width - left - menuWidth,
-        overlay.size.height - top - menuHeight,
-      ),
-      items: [
-        PopupMenuItem(
+      globalPosition: details.globalPosition,
+      items: const [
+        ContextActionMenuItem(
           value: _CategoryListAction.edit,
-          height: 40,
-          child: Row(
-            children: [
-              Icon(Icons.edit_outlined, size: 18, color: AppColors.textPrimary),
-              SizedBox(width: 10),
-              Text('Edit'),
-            ],
-          ),
+          label: 'Edit',
+          icon: Icons.edit_outlined,
         ),
-        PopupMenuItem(
+        ContextActionMenuItem(
           value: _CategoryListAction.delete,
-          height: 40,
-          child: Row(
-            children: [
-              Icon(Icons.delete_outline, size: 18, color: AppColors.danger),
-              SizedBox(width: 10),
-              Text('Delete', style: TextStyle(color: AppColors.dangerDark)),
-            ],
-          ),
+          label: 'Delete',
+          icon: Icons.delete_outline,
+          foregroundColor: AppColors.dangerDark,
         ),
       ],
     );

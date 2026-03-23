@@ -3,9 +3,14 @@ import 'package:expense_tracker/core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 
 class BalanceCard extends StatelessWidget {
-  const BalanceCard({super.key, required this.balance});
+  const BalanceCard({
+    super.key,
+    required this.balance,
+    required this.currencyCode,
+  });
 
   final double balance;
+  final String currencyCode;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +44,7 @@ class BalanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            formatCurrency(balance),
+            formatCurrency(balance, currencyCode: currencyCode),
             style: theme.textTheme.displaySmall?.copyWith(
               color: AppColors.white,
               fontWeight: FontWeight.w700,
