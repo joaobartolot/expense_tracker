@@ -19,6 +19,8 @@ class AccountsPage extends StatelessWidget {
     required this.settingsRepository,
   });
 
+  static const double _floatingNavClearance = 128;
+
   final AccountRepository repository;
   final TransactionRepository transactionRepository;
   final SettingsRepository settingsRepository;
@@ -143,6 +145,7 @@ class AccountsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = AppColors.of(context);
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     return SafeArea(
       child: ValueListenableBuilder<Box<dynamic>>(
@@ -169,7 +172,12 @@ class AccountsPage extends StatelessWidget {
                   );
 
                   return ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      20,
+                      20,
+                      32 + _floatingNavClearance + bottomInset,
+                    ),
                     children: [
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,

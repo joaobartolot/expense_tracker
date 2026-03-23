@@ -27,6 +27,8 @@ class CategoriesPage extends StatefulWidget {
 }
 
 class _CategoriesPageState extends State<CategoriesPage> {
+  static const double _floatingNavClearance = 128;
+
   List<CategoryItem> _categories = const [];
   List<TransactionItem> _transactions = const [];
 
@@ -212,6 +214,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
     final expenseCategories = _categories
         .where((category) => category.type == CategoryType.expense)
         .toList();
@@ -221,40 +224,46 @@ class _CategoriesPageState extends State<CategoriesPage> {
 
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          20,
+          20,
+          32 + _floatingNavClearance + bottomInset,
+        ),
         children: [
-          Text(
-            'Categories',
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Organize expenses and income with simple buckets you can grow later.',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _addCategory,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.brand,
-                foregroundColor: AppColors.white,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Categories',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Organize expenses and income with simple buckets you can grow later.',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Add category'),
-            ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                onPressed: _addCategory,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add'),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -288,15 +297,12 @@ class _CategoriesPageState extends State<CategoriesPage> {
           const SizedBox(height: 28),
           CategorySection(
             title: 'Expense',
-            subtitle:
-                'Everyday spending buckets for tracking where money goes.',
             categories: expenseCategories,
             onCategoryTap: _openCategoryDetails,
             onCategoryLongPressStart: _showCategoryActionMenu,
           ),
           CategorySection(
             title: 'Income',
-            subtitle: 'Sources of money coming into your budget.',
             categories: incomeCategories,
             onCategoryTap: _openCategoryDetails,
             onCategoryLongPressStart: _showCategoryActionMenu,

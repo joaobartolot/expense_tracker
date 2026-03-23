@@ -4,6 +4,7 @@ import 'package:expense_tracker/core/utils/currency_formatter.dart';
 import 'package:expense_tracker/core/utils/supported_currencies.dart';
 import 'package:expense_tracker/core/widgets/app_text_input.dart';
 import 'package:expense_tracker/core/widgets/custom_dropdown_selector.dart';
+import 'package:expense_tracker/core/widgets/primary_action_button.dart';
 import 'package:expense_tracker/core/widgets/segmented_toggle_field.dart';
 import 'package:expense_tracker/features/accounts/data/account_repository.dart';
 import 'package:expense_tracker/features/accounts/domain/models/account.dart';
@@ -267,13 +268,6 @@ class _AddAccountPageState extends State<AddAccountPage> {
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Your default currency is only the starting suggestion. You can still choose a different currency for this account.',
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
                     const SizedBox(height: 24),
                     AppTextInput(
                       label: 'Name',
@@ -354,13 +348,6 @@ class _AddAccountPageState extends State<AddAccountPage> {
                                 color: AppColors.textPrimary,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Set the payment due day now so the account is ready for due-payment tracking later.',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
                             const SizedBox(height: 18),
                             _DueDayPicker(
                               value: _creditCardDueDay,
@@ -397,18 +384,11 @@ class _AddAccountPageState extends State<AddAccountPage> {
                       ),
                     ],
                     const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _isSaving ? null : _saveAccount,
-                        child: Text(
-                          _isSaving
-                              ? 'Saving...'
-                              : _isEditing
-                              ? 'Save changes'
-                              : 'Create account',
-                        ),
-                      ),
+                    PrimaryActionButton(
+                      label: _isEditing ? 'Save changes' : 'Create account',
+                      busyLabel: 'Saving...',
+                      isBusy: _isSaving,
+                      onPressed: _saveAccount,
                     ),
                   ],
                 ),

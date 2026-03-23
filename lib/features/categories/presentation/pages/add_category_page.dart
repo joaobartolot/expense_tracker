@@ -1,5 +1,6 @@
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/widgets/app_text_input.dart';
+import 'package:expense_tracker/core/widgets/primary_action_button.dart';
 import 'package:expense_tracker/core/widgets/segmented_toggle_field.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
 import 'package:expense_tracker/features/categories/presentation/widgets/category_icon_picker.dart';
@@ -150,15 +151,6 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _isEditing
-                          ? 'Adjust the label, description, type, or icon to keep this category clear and useful.'
-                          : 'Add a category entry with a clear label, a short description, and an icon that fits.',
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
                     const SizedBox(height: 24),
                     Center(
                       child: CategoryIconPicker(
@@ -212,20 +204,9 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _saveCategory,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.brand,
-                    foregroundColor: AppColors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                  ),
-                  child: Text(_isEditing ? 'Save changes' : 'Save category'),
-                ),
+              PrimaryActionButton(
+                label: _isEditing ? 'Save changes' : 'Save category',
+                onPressed: _saveCategory,
               ),
             ],
           ),

@@ -2,6 +2,7 @@ import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/supported_currencies.dart';
 import 'package:expense_tracker/core/widgets/app_text_input.dart';
 import 'package:expense_tracker/core/widgets/custom_dropdown_selector.dart';
+import 'package:expense_tracker/core/widgets/primary_action_button.dart';
 import 'package:expense_tracker/features/settings/data/settings_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
@@ -16,6 +17,8 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  static const double _floatingNavClearance = 128;
+
   late final TextEditingController _nameController;
   late String _selectedCurrencyCode;
   String? _nameErrorText;
@@ -73,6 +76,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = AppColors.of(context);
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     return SafeArea(
       child: ValueListenableBuilder<Box<dynamic>>(
@@ -93,7 +97,12 @@ class _SettingsPageState extends State<SettingsPage> {
               .toList(growable: false);
 
           return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              32 + _floatingNavClearance + bottomInset,
+            ),
             children: [
               Text(
                 'Settings',
@@ -156,12 +165,11 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _isSaving ? null : _saveSettings,
-                        child: Text(_isSaving ? 'Saving...' : 'Save settings'),
-                      ),
+                    PrimaryActionButton(
+                      label: 'Save settings',
+                      busyLabel: 'Saving...',
+                      isBusy: _isSaving,
+                      onPressed: _saveSettings,
                     ),
                   ],
                 ),

@@ -7,14 +7,12 @@ class CategorySection extends StatelessWidget {
   const CategorySection({
     super.key,
     required this.title,
-    required this.subtitle,
     required this.categories,
     required this.onCategoryTap,
     required this.onCategoryLongPressStart,
   });
 
   final String title;
-  final String subtitle;
   final List<CategoryItem> categories;
   final ValueChanged<CategoryItem> onCategoryTap;
   final void Function(CategoryItem, LongPressStartDetails)
@@ -34,13 +32,6 @@ class CategorySection extends StatelessWidget {
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 14),

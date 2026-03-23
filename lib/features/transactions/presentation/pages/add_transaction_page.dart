@@ -4,6 +4,7 @@ import 'package:expense_tracker/core/utils/currency_formatter.dart';
 import 'package:expense_tracker/core/utils/supported_currencies.dart';
 import 'package:expense_tracker/core/widgets/app_text_input.dart';
 import 'package:expense_tracker/core/widgets/custom_dropdown_selector.dart';
+import 'package:expense_tracker/core/widgets/primary_action_button.dart';
 import 'package:expense_tracker/core/widgets/segmented_toggle_field.dart';
 import 'package:expense_tracker/features/accounts/data/account_repository.dart';
 import 'package:expense_tracker/features/accounts/domain/models/account.dart';
@@ -578,15 +579,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _isEditing
-                          ? 'Adjust the details below to keep this transaction accurate.'
-                          : 'Pick the type, give it a clear name, and assign it to the right category and account.',
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
                     const SizedBox(height: 24),
                     if (_accounts.isEmpty) ...[
                       Container(
@@ -730,27 +722,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed:
-                      _isSaving || _accounts.isEmpty || _isFetchingExchangeRate
-                      ? null
-                      : _saveTransaction,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.brand,
-                    foregroundColor: AppColors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                  ),
-                  child: Text(
-                    _isSaving
-                        ? (_isEditing ? 'Saving...' : 'Creating...')
-                        : (_isEditing ? 'Save changes' : 'Save transaction'),
-                  ),
-                ),
+              PrimaryActionButton(
+                label: _isEditing ? 'Save changes' : 'Save transaction',
+                busyLabel: _isEditing ? 'Saving...' : 'Creating...',
+                isBusy: _isSaving,
+                onPressed: _accounts.isEmpty || _isFetchingExchangeRate
+                    ? null
+                    : _saveTransaction,
               ),
             ],
           ),

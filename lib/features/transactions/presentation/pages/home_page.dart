@@ -36,6 +36,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  static const double _floatingNavClearance = 128;
+
   List<TransactionItem> _transactions = const [];
   List<CategoryItem> _categories = const [];
   List<Account> _accounts = const [];
@@ -206,6 +208,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
     final groupedTransactions = _groupTransactions(_transactions);
     final categoriesById = {
       for (final category in _categories) category.id: category,
@@ -218,7 +221,12 @@ class _HomePageState extends State<HomePage> {
 
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          20,
+          20,
+          32 + _floatingNavClearance + bottomInset,
+        ),
         children: [
           ValueListenableBuilder<Box<dynamic>>(
             valueListenable: widget.settingsRepository.listenable(),

@@ -29,6 +29,10 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  static const double _navBarHeight = 64;
+  static const double _navBarHorizontalPadding = 20;
+  static const double _navBarBottomPadding = 20;
+
   int _currentIndex = 0;
 
   late final List<Widget> _pages = [
@@ -85,22 +89,32 @@ class _AppShellState extends State<AppShell> {
 
     return Scaffold(
       backgroundColor: colors.background,
-      extendBody: true,
-      body: IndexedStack(index: _currentIndex, children: _pages),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        child: SafeArea(
-          top: false,
-          child: PillBottomNavBar(
-            currentIndex: _currentIndex,
-            items: _items,
-            onTap: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: IndexedStack(index: _currentIndex, children: _pages),
           ),
-        ),
+          Positioned(
+            left: _navBarHorizontalPadding,
+            right: _navBarHorizontalPadding,
+            bottom: _navBarBottomPadding,
+            child: SafeArea(
+              top: false,
+              child: SizedBox(
+                height: _navBarHeight,
+                child: PillBottomNavBar(
+                  currentIndex: _currentIndex,
+                  items: _items,
+                  onTap: (index) {
+                    setState(() {
+                      _currentIndex = index;
+                    });
+                  },
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
