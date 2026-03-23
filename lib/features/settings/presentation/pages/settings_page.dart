@@ -1,8 +1,6 @@
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/widgets/app_text_input.dart';
-import 'package:expense_tracker/core/widgets/segmented_toggle_field.dart';
 import 'package:expense_tracker/features/settings/data/settings_repository.dart';
-import 'package:expense_tracker/features/settings/domain/models/app_theme_preference.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
@@ -67,10 +65,6 @@ class _SettingsPageState extends State<SettingsPage> {
     ).showSnackBar(const SnackBar(content: Text('Settings updated.')));
   }
 
-  Future<void> _updateTheme(AppThemePreference preference) async {
-    await widget.repository.updateThemePreference(preference);
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -97,7 +91,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Keep the app personal and choose how it should look.',
+                'Keep the app personal.',
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: colors.textSecondary,
                 ),
@@ -136,51 +130,6 @@ class _SettingsPageState extends State<SettingsPage> {
                         onPressed: _isSavingName ? null : _saveName,
                         child: Text(_isSavingName ? 'Saving...' : 'Save name'),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              _SettingsCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Appearance',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Theme defaults to your device setting.',
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    SegmentedToggleField<AppThemePreference>(
-                      label: 'Theme',
-                      value: settings.themePreference,
-                      items: const [
-                        SegmentedToggleItem(
-                          value: AppThemePreference.system,
-                          label: 'System',
-                          icon: Icons.brightness_auto_rounded,
-                        ),
-                        SegmentedToggleItem(
-                          value: AppThemePreference.light,
-                          label: 'Light',
-                          icon: Icons.light_mode_rounded,
-                        ),
-                        SegmentedToggleItem(
-                          value: AppThemePreference.dark,
-                          label: 'Dark',
-                          icon: Icons.dark_mode_rounded,
-                        ),
-                      ],
-                      onChanged: _updateTheme,
                     ),
                   ],
                 ),

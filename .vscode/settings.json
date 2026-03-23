@@ -1,0 +1,8 @@
+{
+	"chat.tools.terminal.autoApprove": {
+		"flutter": true,
+		"dart": true
+	},
+  "files.autoSave": "afterDelay",
+  "dart.flutterHotReloadOnSave": "all"
+}

@@ -3,7 +3,6 @@ import 'package:expense_tracker/core/theme/app_theme.dart';
 import 'package:expense_tracker/features/categories/data/hive_category_repository.dart';
 import 'package:expense_tracker/features/navigation/presentation/pages/app_shell.dart';
 import 'package:expense_tracker/features/settings/data/hive_settings_repository.dart';
-import 'package:expense_tracker/features/settings/domain/models/app_theme_preference.dart';
 import 'package:expense_tracker/features/transactions/data/hive_transaction_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
@@ -33,15 +32,13 @@ class _ExpenseTrackerAppState extends State<ExpenseTrackerApp> {
     return ValueListenableBuilder<Box<dynamic>>(
       valueListenable: _settingsRepository.listenable(),
       builder: (context, value, child) {
-        final settings = _settingsRepository.getSettings();
-
         return MaterialApp(
           navigatorKey: appNavigatorKey,
           title: 'Vero',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
-          darkTheme: AppTheme.dark(),
-          themeMode: settings.themePreference.themeMode,
+          // Keep dark palette defined in AppTheme for future re-enable.
+          themeMode: ThemeMode.light,
           builder: (context, child) {
             return GestureDetector(
               behavior: HitTestBehavior.translucent,
