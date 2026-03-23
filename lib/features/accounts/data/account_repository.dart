@@ -8,5 +8,6 @@ abstract class AccountRepository {
   Future<void> addAccount(Account account);
   Future<void> updateAccount(Account account);
   Future<void> deleteAccount(String accountId);
+  Future<void> reorderAccounts(List<Account> accounts);
   String createAccountId();
 }

@@ -11,7 +11,7 @@ import 'package:expense_tracker/features/transactions/domain/models/transaction_
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
-class AccountsPage extends StatelessWidget {
+class AccountsPage extends StatefulWidget {
   const AccountsPage({
     super.key,
     required this.repository,
@@ -25,12 +25,19 @@ class AccountsPage extends StatelessWidget {
   final TransactionRepository transactionRepository;
   final SettingsRepository settingsRepository;
 
+  @override
+  State<AccountsPage> createState() => _AccountsPageState();
+}
+
+class _AccountsPageState extends State<AccountsPage> {
+  bool _isOrganizing = false;
+
   Future<void> _openAddAccount(BuildContext context) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (context) => AddAccountPage(
-          repository: repository,
-          settingsRepository: settingsRepository,
+          repository: widget.repository,
+          settingsRepository: widget.settingsRepository,
         ),
       ),
     );
@@ -40,8 +47,8 @@ class AccountsPage extends StatelessWidget {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (context) => AddAccountPage(
-          repository: repository,
-          settingsRepository: settingsRepository,
+          repository: widget.repository,
+          settingsRepository: widget.settingsRepository,
           initialAccount: account,
         ),
       ),
@@ -49,7 +56,7 @@ class AccountsPage extends StatelessWidget {
   }
 
   Future<void> _deleteAccount(BuildContext context, Account account) async {
-    final transactions = await transactionRepository.getTransactions();
+    final transactions = await widget.transactionRepository.getTransactions();
     if (!context.mounted) {
       return;
     }
@@ -99,7 +106,7 @@ class AccountsPage extends StatelessWidget {
       return;
     }
 
-    await repository.deleteAccount(account.id);
+    await widget.repository.deleteAccount(account.id);
   }
 
   Future<void> _showAccountActionMenu(
@@ -141,6 +148,30 @@ class AccountsPage extends StatelessWidget {
     }
   }
 
+  Future<void> _reorderAccounts(
+    List<Account> accounts,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    final hasPinnedPrimary = accounts.isNotEmpty && accounts.first.isPrimary;
+    if (hasPinnedPrimary && oldIndex == 0) {
+      return;
+    }
+
+    final reorderedAccounts = [...accounts];
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+    if (hasPinnedPrimary && newIndex == 0) {
+      newIndex = 1;
+    }
+
+    final movedAccount = reorderedAccounts.removeAt(oldIndex);
+    reorderedAccounts.insert(newIndex, movedAccount);
+
+    await widget.repository.reorderAccounts(reorderedAccounts);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -149,10 +180,10 @@ class AccountsPage extends StatelessWidget {
 
     return SafeArea(
       child: ValueListenableBuilder<Box<dynamic>>(
-        valueListenable: repository.listenable(),
+        valueListenable: widget.repository.listenable(),
         builder: (context, value, child) {
           return ValueListenableBuilder<Box<dynamic>>(
-            valueListenable: transactionRepository.listenable(),
+            valueListenable: widget.transactionRepository.listenable(),
             builder: (context, transactionValue, child) {
               return FutureBuilder<
                 ({List<Account> accounts, List<TransactionItem> transactions})
@@ -176,7 +207,7 @@ class AccountsPage extends StatelessWidget {
                       20,
                       20,
                       20,
-                      32 + _floatingNavClearance + bottomInset,
+                      32 + AccountsPage._floatingNavClearance + bottomInset,
                     ),
                     children: [
                       Row(
@@ -204,7 +235,7 @@ class AccountsPage extends StatelessWidget {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 16),
                           FilledButton.icon(
                             onPressed: () => _openAddAccount(context),
                             icon: const Icon(Icons.add_rounded),
@@ -216,7 +247,7 @@ class AccountsPage extends StatelessWidget {
                       AccountSummaryCard(
                         totalBalance: totalBalance,
                         accountCount: accounts.length,
-                        currencyCode: settingsRepository
+                        currencyCode: widget.settingsRepository
                             .getSettings()
                             .defaultCurrencyCode,
                       ),
@@ -230,25 +261,130 @@ class AccountsPage extends StatelessWidget {
                             _openAddAccount(context);
                           },
                         )
-                      else
-                        ...accounts.map(
-                          (account) => Padding(
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: AccountTile(
-                              account: account,
-                              balance:
-                                  effectiveBalances[account.id] ??
-                                  account.balance,
-                              onTap: () => _openEditAccount(context, account),
-                              onLongPressStart: (details) =>
-                                  _showAccountActionMenu(
-                                    context,
-                                    account,
-                                    details,
-                                  ),
+                      else ...[
+                        Row(
+                          children: [
+                            Text(
+                              _isOrganizing
+                                  ? 'Organizing accounts'
+                                  : 'Your accounts',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: colors.textPrimary,
+                              ),
                             ),
-                          ),
+                            const Spacer(),
+                            if (accounts.length > 1)
+                              TextButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _isOrganizing = !_isOrganizing;
+                                  });
+                                },
+                                child: Text(
+                                  _isOrganizing ? 'Done' : 'Organize',
+                                ),
+                              ),
+                          ],
                         ),
+                        const SizedBox(height: 14),
+                        _isOrganizing
+                            ? ReorderableListView.builder(
+                                shrinkWrap: true,
+                                buildDefaultDragHandles: false,
+                                physics: const NeverScrollableScrollPhysics(),
+                                proxyDecorator: (child, index, animation) {
+                                  return AnimatedBuilder(
+                                    animation: animation,
+                                    builder: (context, _) {
+                                      final elevation = Tween<double>(
+                                        begin: 0,
+                                        end: 10,
+                                      ).evaluate(animation);
+
+                                      return Material(
+                                        type: MaterialType.transparency,
+                                        elevation: elevation,
+                                        shadowColor: AppColors.shadow,
+                                        child: child,
+                                      );
+                                    },
+                                  );
+                                },
+                                itemCount: accounts.length,
+                                onReorder: (oldIndex, newIndex) =>
+                                    _reorderAccounts(
+                                      accounts,
+                                      oldIndex,
+                                      newIndex,
+                                    ),
+                                itemBuilder: (context, index) {
+                                  final account = accounts[index];
+                                  final canDrag = !account.isPrimary;
+                                  return Padding(
+                                    key: ValueKey(account.id),
+                                    padding: const EdgeInsets.only(bottom: 14),
+                                    child: AccountTile(
+                                      account: account,
+                                      balance:
+                                          effectiveBalances[account.id] ??
+                                          account.balance,
+                                      leading: SizedBox(
+                                        width: 24,
+                                        child: canDrag
+                                            ? ReorderableDragStartListener(
+                                                index: index,
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 2,
+                                                      ),
+                                                  child: Icon(
+                                                    Icons
+                                                        .drag_indicator_rounded,
+                                                    color: colors.iconMuted,
+                                                    size: 22,
+                                                  ),
+                                                ),
+                                              )
+                                            : Icon(
+                                                Icons.push_pin_rounded,
+                                                color: colors.iconMuted,
+                                                size: 18,
+                                              ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              )
+                            : Column(
+                                children: accounts
+                                    .map(
+                                      (account) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 14,
+                                        ),
+                                        child: AccountTile(
+                                          account: account,
+                                          balance:
+                                              effectiveBalances[account.id] ??
+                                              account.balance,
+                                          onTap: () => _openEditAccount(
+                                            context,
+                                            account,
+                                          ),
+                                          onLongPressStart: (details) =>
+                                              _showAccountActionMenu(
+                                                context,
+                                                account,
+                                                details,
+                                              ),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(growable: false),
+                              ),
+                      ],
                     ],
                   );
                 },
@@ -263,8 +399,8 @@ class AccountsPage extends StatelessWidget {
   Future<({List<Account> accounts, List<TransactionItem> transactions})>
   _loadPageData() async {
     final results = await Future.wait<dynamic>([
-      repository.getAccounts(),
-      transactionRepository.getTransactions(),
+      widget.repository.getAccounts(),
+      widget.transactionRepository.getTransactions(),
     ]);
 
     return (

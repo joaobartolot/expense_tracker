@@ -316,6 +316,12 @@ Guidelines:
 * Smooth transitions
 * Non-intrusive alerts
 
+### ✍️ Microcopy
+
+* Keep labels and helper text brief
+* Do not explain obvious UI outcomes
+* Prefer silence over redundant confirmations for routine actions
+
 ---
 
 ## 🪵 Logging

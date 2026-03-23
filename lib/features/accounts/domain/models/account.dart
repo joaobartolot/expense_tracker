@@ -11,6 +11,7 @@ class Account {
     required this.type,
     required this.balance,
     required this.currencyCode,
+    this.isPrimary = false,
     this.description = '',
     this.creditCardDueDay,
     this.paymentTracking,
@@ -21,6 +22,7 @@ class Account {
   final AccountType type;
   final double balance;
   final String currencyCode;
+  final bool isPrimary;
   final String description;
   final int? creditCardDueDay;
   final CreditCardPaymentTracking? paymentTracking;
@@ -54,6 +56,7 @@ class Account {
       'type': type.name,
       'balance': balance,
       'currencyCode': currencyCode,
+      'isPrimary': isPrimary,
       'description': description,
       'creditCardDueDay': creditCardDueDay,
       'paymentTracking': paymentTracking?.name,
@@ -67,6 +70,7 @@ class Account {
       type: AccountType.values.byName(map['type'] as String? ?? 'bank'),
       balance: (map['balance'] as num?)?.toDouble() ?? 0,
       currencyCode: map['currencyCode'] as String? ?? 'EUR',
+      isPrimary: map['isPrimary'] as bool? ?? false,
       description: map['description'] as String? ?? '',
       creditCardDueDay: map['creditCardDueDay'] as int?,
       paymentTracking: _paymentTrackingFromName(
@@ -81,6 +85,7 @@ class Account {
     AccountType? type,
     double? balance,
     String? currencyCode,
+    bool? isPrimary,
     String? description,
     int? creditCardDueDay,
     bool clearCreditCardDueDay = false,
@@ -93,6 +98,7 @@ class Account {
       type: type ?? this.type,
       balance: balance ?? this.balance,
       currencyCode: currencyCode ?? this.currencyCode,
+      isPrimary: isPrimary ?? this.isPrimary,
       description: description ?? this.description,
       creditCardDueDay: clearCreditCardDueDay
           ? null

@@ -10,14 +10,18 @@ class AccountTile extends StatelessWidget {
     super.key,
     required this.account,
     required this.balance,
-    required this.onTap,
+    this.onTap,
     this.onLongPressStart,
+    this.leading,
+    this.trailing,
   });
 
   final Account account;
   final double balance;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final GestureLongPressStartCallback? onLongPressStart;
+  final Widget? leading;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -36,8 +40,9 @@ class AccountTile extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(18),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                if (leading != null) ...[leading!, const SizedBox(width: 12)],
                 Container(
                   width: 48,
                   height: 48,
@@ -81,6 +86,8 @@ class AccountTile extends StatelessWidget {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
+                            if (account.isPrimary)
+                              const _MetaChip(label: 'Main account'),
                             if (account.creditCardDueDay case final dueDay)
                               _MetaChip(label: 'Due day $dueDay'),
                             if (account.paymentTrackingLabel
@@ -88,6 +95,9 @@ class AccountTile extends StatelessWidget {
                               _MetaChip(label: label),
                           ],
                         ),
+                      ] else if (account.isPrimary) ...[
+                        const SizedBox(height: 10),
+                        const _MetaChip(label: 'Main account'),
                       ],
                     ],
                   ),
@@ -117,6 +127,7 @@ class AccountTile extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (trailing != null) ...[const SizedBox(width: 10), trailing!],
               ],
             ),
           ),

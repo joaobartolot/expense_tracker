@@ -39,6 +39,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
   String _selectedCurrencyCode = 'EUR';
   CreditCardPaymentTracking _paymentTracking = CreditCardPaymentTracking.manual;
   int _creditCardDueDay = 1;
+  bool _isPrimaryAccount = false;
   bool _didTrySubmit = false;
   bool _isSaving = false;
   bool _isFormattingBalance = false;
@@ -53,6 +54,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
     _selectedCurrencyCode =
         initialAccount?.currencyCode ??
         widget.settingsRepository.getSettings().defaultCurrencyCode;
+    _isPrimaryAccount = initialAccount?.isPrimary ?? false;
     _paymentTracking =
         initialAccount?.paymentTracking ?? CreditCardPaymentTracking.manual;
     _creditCardDueDay = initialAccount?.creditCardDueDay ?? 1;
@@ -162,6 +164,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
         type: _selectedType,
         balance: _balanceValue,
         currencyCode: _selectedCurrencyCode,
+        isPrimary: _isPrimaryAccount,
         creditCardDueDay: _isCreditCard ? _creditCardDueDay : null,
         paymentTracking: _isCreditCard ? _paymentTracking : null,
       );
@@ -296,6 +299,15 @@ class _AddAccountPageState extends State<AddAccountPage> {
                       },
                     ),
                     const SizedBox(height: 18),
+                    _PrimaryAccountToggle(
+                      value: _isPrimaryAccount,
+                      onChanged: (value) {
+                        setState(() {
+                          _isPrimaryAccount = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 18),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -401,6 +413,63 @@ class _AddAccountPageState extends State<AddAccountPage> {
   }
 }
 
+class _PrimaryAccountToggle extends StatelessWidget {
+  const _PrimaryAccountToggle({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.border, width: 1.4),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: value ? AppColors.brand : AppColors.background,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.star_rounded,
+                  size: 20,
+                  color: value ? AppColors.white : AppColors.iconMuted,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Main account',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Switch.adaptive(value: value, onChanged: onChanged),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DueDayPicker extends StatelessWidget {
   const _DueDayPicker({required this.value, required this.onChanged});
 
@@ -462,24 +531,12 @@ class _DueDayPicker extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Day $value',
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Tap to choose from the month view',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      'Day $value',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
