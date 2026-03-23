@@ -1,43 +1,59 @@
-import 'package:flutter/material.dart';
-
 enum TransactionType { income, expense }
 
 class TransactionItem {
   const TransactionItem({
     required this.id,
     required this.title,
-    required this.subtitle,
+    required this.categoryId,
     required this.amount,
     required this.date,
     required this.type,
-    required this.icon,
   });
 
   final String id;
   final String title;
-  final String subtitle;
+  final String categoryId;
   final double amount;
   final DateTime date;
   final TransactionType type;
-  final IconData icon;
+
+  Map<String, Object?> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'categoryId': categoryId,
+      'amount': amount,
+      'date': date.toIso8601String(),
+      'type': type.name,
+    };
+  }
+
+  factory TransactionItem.fromMap(Map<dynamic, dynamic> map) {
+    return TransactionItem(
+      id: map['id'] as String? ?? '',
+      title: map['title'] as String? ?? '',
+      categoryId: map['categoryId'] as String? ?? '',
+      amount: (map['amount'] as num?)?.toDouble() ?? 0,
+      date: DateTime.tryParse(map['date'] as String? ?? '') ?? DateTime.now(),
+      type: TransactionType.values.byName(map['type'] as String? ?? 'expense'),
+    );
+  }
 
   TransactionItem copyWith({
     String? id,
     String? title,
-    String? subtitle,
+    String? categoryId,
     double? amount,
     DateTime? date,
     TransactionType? type,
-    IconData? icon,
   }) {
     return TransactionItem(
       id: id ?? this.id,
       title: title ?? this.title,
-      subtitle: subtitle ?? this.subtitle,
+      categoryId: categoryId ?? this.categoryId,
       amount: amount ?? this.amount,
       date: date ?? this.date,
       type: type ?? this.type,
-      icon: icon ?? this.icon,
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/date_label_formatter.dart';
 import 'package:expense_tracker/features/categories/data/category_repository.dart';
+import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
 import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:expense_tracker/features/transactions/presentation/pages/add_transaction_page.dart';
@@ -27,6 +28,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   List<TransactionItem> _transactions = const [];
+  List<CategoryItem> _categories = const [];
 
   @override
   void initState() {
@@ -36,6 +38,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadTransactions() async {
     final transactions = await widget.repository.getTransactions();
+    final categories = await widget.categoryRepository.getCategories();
 
     if (!mounted) {
       return;
@@ -43,6 +46,7 @@ class _HomePageState extends State<HomePage> {
 
     setState(() {
       _transactions = transactions;
+      _categories = categories;
     });
   }
 
@@ -221,6 +225,9 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final groupedTransactions = _groupTransactions(_transactions);
+    final categoriesById = {
+      for (final category in _categories) category.id: category,
+    };
     final balance = _transactions.fold<double>(
       0,
       (sum, transaction) => sum + transaction.signedAmount,
@@ -268,6 +275,12 @@ class _HomePageState extends State<HomePage> {
             (entry) => TransactionGroup(
               label: entry.key,
               transactions: entry.value,
+              categoryNameFor: (transaction) =>
+                  categoriesById[transaction.categoryId]?.name ??
+                  'Unknown category',
+              categoryIconFor: (transaction) =>
+                  categoriesById[transaction.categoryId]?.icon ??
+                  Icons.sell_outlined,
               onTransactionTap: _openTransactionDetails,
               onTransactionLongPressStart: _showTransactionActionMenu,
             ),

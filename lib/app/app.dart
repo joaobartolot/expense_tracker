@@ -1,7 +1,7 @@
-import 'package:expense_tracker/features/categories/data/in_memory_category_repository.dart';
 import 'package:expense_tracker/core/theme/app_theme.dart';
-import 'package:expense_tracker/features/transactions/data/in_memory_transaction_repository.dart';
+import 'package:expense_tracker/features/categories/data/hive_category_repository.dart';
 import 'package:expense_tracker/features/navigation/presentation/pages/app_shell.dart';
+import 'package:expense_tracker/features/transactions/data/hive_transaction_repository.dart';
 import 'package:flutter/material.dart';
 
 class ExpenseTrackerApp extends StatelessWidget {
@@ -21,8 +21,8 @@ class ExpenseTrackerApp extends StatelessWidget {
         );
       },
       home: AppShell(
-        repository: InMemoryTransactionRepository(),
-        categoryRepository: InMemoryCategoryRepository(),
+        repository: HiveTransactionRepository(),
+        categoryRepository: HiveCategoryRepository(),
       ),
     );
   }

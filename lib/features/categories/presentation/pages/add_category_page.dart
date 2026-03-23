@@ -4,6 +4,9 @@ import 'package:expense_tracker/core/widgets/segmented_toggle_field.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
 import 'package:expense_tracker/features/categories/presentation/widgets/category_icon_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
+
+const _uuid = Uuid();
 
 class AddCategoryPage extends StatefulWidget {
   const AddCategoryPage({super.key});
@@ -95,6 +98,7 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
     }
 
     final category = CategoryItem(
+      id: _uuid.v4(),
       name: _nameController.text.trim(),
       description: _descriptionController.text.trim(),
       type: _type,

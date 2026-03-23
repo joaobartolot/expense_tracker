@@ -1,6 +1,7 @@
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/currency_formatter.dart';
 import 'package:expense_tracker/features/categories/data/category_repository.dart';
+import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
 import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:expense_tracker/features/transactions/presentation/pages/add_transaction_page.dart';
@@ -23,6 +24,26 @@ class TransactionDetailPage extends StatefulWidget {
 }
 
 class _TransactionDetailPageState extends State<TransactionDetailPage> {
+  List<CategoryItem> _categories = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    final categories = await widget.categoryRepository.getCategories();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _categories = categories;
+    });
+  }
+
   Future<void> _editTransaction() async {
     final didChange = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -89,6 +110,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final transaction = widget.transaction;
+    final category = _categories
+        .where((item) => item.id == transaction.categoryId)
+        .firstOrNull;
     final isIncome = transaction.type == TransactionType.income;
     final amountColor = isIncome ? AppColors.income : AppColors.textPrimary;
     final amountPrefix = isIncome ? '+' : '-';
@@ -98,6 +122,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       TimeOfDay.fromDateTime(transaction.date),
     );
     final shortDate = localizations.formatShortDate(transaction.date);
+    final categoryName = category?.name ?? 'Unknown category';
+    final categoryIcon = category?.icon ?? Icons.sell_outlined;
     final iconBackground = isIncome
         ? AppColors.incomeSurface
         : AppColors.expenseSurface;
@@ -144,11 +170,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                           color: iconBackground,
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Icon(
-                          transaction.icon,
-                          color: iconColor,
-                          size: 28,
-                        ),
+                        child: Icon(categoryIcon, color: iconColor, size: 28),
                       ),
                       const Spacer(),
                       _StatusBadge(
@@ -194,7 +216,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   _DetailTile(
                     icon: Icons.category_outlined,
                     label: 'Category',
-                    value: transaction.subtitle,
+                    value: categoryName,
                   ),
                   const SizedBox(height: 12),
                   _DetailTile(

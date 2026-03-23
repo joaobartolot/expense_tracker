@@ -7,11 +7,15 @@ class TransactionTile extends StatelessWidget {
   const TransactionTile({
     super.key,
     required this.transaction,
+    required this.categoryName,
+    required this.categoryIcon,
     this.onTap,
     this.onLongPressStart,
   });
 
   final TransactionItem transaction;
+  final String categoryName;
+  final IconData categoryIcon;
   final VoidCallback? onTap;
   final GestureLongPressStartCallback? onLongPressStart;
 
@@ -41,7 +45,7 @@ class TransactionTile extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
-                    transaction.icon,
+                    categoryIcon,
                     color: isIncome ? AppColors.income : AppColors.iconMuted,
                   ),
                 ),
@@ -60,7 +64,7 @@ class TransactionTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        transaction.subtitle,
+                        categoryName,
                         style: const TextStyle(
                           fontSize: 14,
                           color: AppColors.textSecondary,

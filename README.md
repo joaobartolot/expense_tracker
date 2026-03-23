@@ -314,6 +314,20 @@ Guidelines:
 
 ---
 
+## 🪵 Logging
+
+Logging should stay intentional and minimal.
+
+Guidelines:
+
+* Log only useful events, failures, and warnings that help debug real issues
+* Prefer meaningful logs around app startup, persistence, and unexpected errors
+* Avoid noisy logs for normal UI flow, rebuilds, or routine state changes
+* Keep logs concise and easy to scan
+* The app should never feel filled with logs just because logging is available
+
+---
+
 ### ➕ Transaction UX
 
 * Default: quick input (amount, category, account)

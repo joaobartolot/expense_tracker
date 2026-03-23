@@ -2,11 +2,15 @@ import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/widgets/app_text_input.dart';
 import 'package:expense_tracker/core/widgets/custom_dropdown_selector.dart';
 import 'package:expense_tracker/core/widgets/segmented_toggle_field.dart';
+import 'package:expense_tracker/core/logging/scoped_log_printer.dart';
 import 'package:expense_tracker/features/categories/data/category_repository.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
 import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
+
+final _logger = Logger(printer: ScopedLogPrinter('add_transaction_page'));
 
 class AddTransactionPage extends StatefulWidget {
   const AddTransactionPage({
@@ -87,8 +91,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
 
     for (final category in filteredCategories) {
-      if (category.name == selectedCategory.name &&
-          category.type == selectedCategory.type) {
+      if (category.id == selectedCategory.id) {
         return category;
       }
     }
@@ -102,14 +105,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       return null;
     }
 
-    final expectedType = switch (initialTransaction.type) {
-      TransactionType.income => CategoryType.income,
-      TransactionType.expense => CategoryType.expense,
-    };
-
     for (final category in categories) {
-      if (category.name == initialTransaction.subtitle &&
-          category.type == expectedType) {
+      if (category.id == initialTransaction.categoryId) {
         return category;
       }
     }
@@ -223,21 +220,45 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       _isSaving = true;
     });
 
-    final initialTransaction = widget.initialTransaction;
-    final transaction = TransactionItem(
-      id: initialTransaction?.id ?? widget.repository.createTransactionId(),
-      title: _nameController.text.trim(),
-      subtitle: selectedCategory.name,
-      amount: _amountValue,
-      date: initialTransaction?.date ?? DateTime.now(),
-      type: _type,
-      icon: selectedCategory.icon,
-    );
+    TransactionItem? transaction;
 
-    if (_isEditing) {
-      await widget.repository.updateTransaction(transaction);
-    } else {
-      await widget.repository.addTransaction(transaction);
+    try {
+      final initialTransaction = widget.initialTransaction;
+      transaction = TransactionItem(
+        id: initialTransaction?.id ?? widget.repository.createTransactionId(),
+        title: _nameController.text.trim(),
+        categoryId: selectedCategory.id,
+        amount: _amountValue,
+        date: initialTransaction?.date ?? DateTime.now(),
+        type: _type,
+      );
+
+      if (_isEditing) {
+        await widget.repository.updateTransaction(transaction);
+      } else {
+        await widget.repository.addTransaction(transaction);
+      }
+    } catch (error, stackTrace) {
+      _logger.e(
+        'Failed to save transaction ${transaction?.id ?? 'unknown'}.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isSaving = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not save the transaction. Please try again.'),
+        ),
+      );
+      return;
     }
 
     if (!mounted) {
