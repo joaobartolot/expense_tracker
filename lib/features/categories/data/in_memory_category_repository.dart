@@ -7,7 +7,6 @@ class InMemoryCategoryRepository implements CategoryRepository {
     : _categories = initialCategories ?? _buildInitialCategories();
 
   final List<CategoryItem> _categories;
-  int _nextMockIndex = 0;
 
   @override
   Future<List<CategoryItem>> getCategories() async {
@@ -17,13 +16,6 @@ class InMemoryCategoryRepository implements CategoryRepository {
   @override
   Future<void> addCategory(CategoryItem category) async {
     _categories.insert(0, category);
-  }
-
-  CategoryItem buildMockCategory() {
-    final mockCategory =
-        _mockCategories[_nextMockIndex % _mockCategories.length];
-    _nextMockIndex++;
-    return mockCategory;
   }
 
   static List<CategoryItem> _buildInitialCategories() {
@@ -60,31 +52,4 @@ class InMemoryCategoryRepository implements CategoryRepository {
       ),
     ];
   }
-
-  static const List<CategoryItem> _mockCategories = [
-    CategoryItem(
-      name: 'Utilities',
-      description: 'Electricity, water, and internet',
-      type: CategoryType.expense,
-      icon: Icons.flash_on_outlined,
-    ),
-    CategoryItem(
-      name: 'Health',
-      description: 'Pharmacy and medical expenses',
-      type: CategoryType.expense,
-      icon: Icons.favorite_border,
-    ),
-    CategoryItem(
-      name: 'Bonus',
-      description: 'Performance and yearly bonuses',
-      type: CategoryType.income,
-      icon: Icons.workspace_premium_outlined,
-    ),
-    CategoryItem(
-      name: 'Investments',
-      description: 'Dividends and passive income',
-      type: CategoryType.income,
-      icon: Icons.trending_up_outlined,
-    ),
-  ];
 }

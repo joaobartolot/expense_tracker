@@ -281,109 +281,109 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         title: Text(_isEditing ? 'Edit transaction' : 'Add transaction'),
       ),
       body: SafeArea(
-        child: ListView(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(32),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(32),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isEditing ? 'Update this entry' : 'Create a new entry',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _isEditing
+                          ? 'Adjust the details below to keep this transaction accurate.'
+                          : 'Pick the type, give it a clear name, and assign it to the right category.',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SegmentedToggleField<TransactionType>(
+                      label: 'Type',
+                      value: _type,
+                      items: const [
+                        SegmentedToggleItem(
+                          value: TransactionType.expense,
+                          label: 'Expense',
+                          icon: Icons.arrow_upward_rounded,
+                        ),
+                        SegmentedToggleItem(
+                          value: TransactionType.income,
+                          label: 'Income',
+                          icon: Icons.arrow_downward_rounded,
+                        ),
+                      ],
+                      onChanged: _updateType,
+                    ),
+                    const SizedBox(height: 20),
+                    AppTextInput(
+                      label: 'Name',
+                      controller: _nameController,
+                      hintText: 'Transaction name',
+                      textCapitalization: TextCapitalization.words,
+                      errorText: _nameError,
+                    ),
+                    const SizedBox(height: 16),
+                    AppTextInput(
+                      label: 'Amount',
+                      controller: _amountController,
+                      keyboardType: TextInputType.number,
+                      hintText: '0.00',
+                      errorText: _amountError,
+                      prefixText: '\$ ',
+                    ),
+                    const SizedBox(height: 16),
+                    CustomDropdownSelector<CategoryItem>(
+                      label: 'Category',
+                      hintText: availableCategories.isEmpty
+                          ? 'No categories available'
+                          : 'Choose a category',
+                      value: _selectedCategory,
+                      items: categoryItems,
+                      errorText: _categoryError,
+                      onChanged: (category) {
+                        setState(() {
+                          _selectedCategory = category;
+                        });
+                      },
+                    ),
+                  ],
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _isEditing ? 'Update this entry' : 'Create a new entry',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _isSaving ? null : _saveTransaction,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.brand,
+                    foregroundColor: AppColors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _isEditing
-                        ? 'Adjust the details below to keep this transaction accurate.'
-                        : 'Pick the type, give it a clear name, and assign it to the right category.',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                  child: Text(
+                    _isSaving
+                        ? (_isEditing ? 'Saving...' : 'Creating...')
+                        : (_isEditing ? 'Save changes' : 'Save transaction'),
                   ),
-                  const SizedBox(height: 24),
-                  SegmentedToggleField<TransactionType>(
-                    label: 'Type',
-                    value: _type,
-                    items: const [
-                      SegmentedToggleItem(
-                        value: TransactionType.expense,
-                        label: 'Expense',
-                        icon: Icons.arrow_upward_rounded,
-                      ),
-                      SegmentedToggleItem(
-                        value: TransactionType.income,
-                        label: 'Income',
-                        icon: Icons.arrow_downward_rounded,
-                      ),
-                    ],
-                    onChanged: _updateType,
-                  ),
-                  const SizedBox(height: 20),
-                  AppTextInput(
-                    label: 'Name',
-                    controller: _nameController,
-                    hintText: 'Transaction name',
-                    textCapitalization: TextCapitalization.words,
-                    errorText: _nameError,
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextInput(
-                    label: 'Amount',
-                    controller: _amountController,
-                    keyboardType: TextInputType.number,
-                    hintText: '0.00',
-                    errorText: _amountError,
-                    prefixText: '\$ ',
-                  ),
-                  const SizedBox(height: 16),
-                  CustomDropdownSelector<CategoryItem>(
-                    label: 'Category',
-                    hintText: availableCategories.isEmpty
-                        ? 'No categories available'
-                        : 'Choose a category',
-                    value: _selectedCategory,
-                    items: categoryItems,
-                    errorText: _categoryError,
-                    onChanged: (category) {
-                      setState(() {
-                        _selectedCategory = category;
-                      });
-                    },
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        child: SafeArea(
-          top: false,
-          child: FilledButton(
-            onPressed: _isSaving ? null : _saveTransaction,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.brand,
-              foregroundColor: AppColors.white,
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-            ),
-            child: Text(
-              _isSaving
-                  ? (_isEditing ? 'Saving...' : 'Creating...')
-                  : (_isEditing ? 'Save changes' : 'Save transaction'),
-            ),
+            ],
           ),
         ),
       ),

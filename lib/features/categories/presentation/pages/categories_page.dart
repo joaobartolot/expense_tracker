@@ -1,6 +1,6 @@
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/features/categories/data/category_repository.dart';
-import 'package:expense_tracker/features/categories/data/in_memory_category_repository.dart';
+import 'package:expense_tracker/features/categories/presentation/pages/add_category_page.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
 import 'package:expense_tracker/features/categories/presentation/widgets/category_section.dart';
 import 'package:flutter/material.dart';
@@ -36,18 +36,18 @@ class _CategoriesPageState extends State<CategoriesPage> {
   }
 
   Future<void> _addCategory() async {
-    final repository = widget.repository;
-    final category = switch (repository) {
-      InMemoryCategoryRepository repo => repo.buildMockCategory(),
-      _ => const CategoryItem(
-        name: 'New category',
-        description: 'Mock category',
-        type: CategoryType.expense,
-        icon: Icons.sell_outlined,
-      ),
-    };
+    final category = await Navigator.of(context).push<CategoryItem>(
+      MaterialPageRoute(builder: (context) => const AddCategoryPage()),
+    );
+
+    if (category == null) {
+      return;
+    }
 
     await widget.repository.addCategory(category);
+    if (!mounted) {
+      return;
+    }
     await _loadCategories();
   }
 
@@ -80,6 +80,23 @@ class _CategoriesPageState extends State<CategoriesPage> {
             ),
           ),
           const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _addCategory,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.brand,
+                foregroundColor: AppColors.white,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+              ),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add category'),
+            ),
+          ),
+          const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -105,31 +122,18 @@ class _CategoriesPageState extends State<CategoriesPage> {
                     backgroundColor: AppColors.incomeSurface,
                   ),
                 ),
-                const SizedBox(width: 12),
-                InkWell(
-                  onTap: _addCategory,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Ink(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.brand,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(Icons.add, color: AppColors.white),
-                  ),
-                ),
               ],
             ),
           ),
           const SizedBox(height: 28),
           CategorySection(
-            title: 'Expense categories',
+            title: 'Expense',
             subtitle:
                 'Everyday spending buckets for tracking where money goes.',
             categories: expenseCategories,
           ),
           CategorySection(
-            title: 'Income categories',
+            title: 'Income',
             subtitle: 'Sources of money coming into your budget.',
             categories: incomeCategories,
           ),
