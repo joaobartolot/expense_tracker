@@ -42,7 +42,7 @@ class CategoryTile extends StatelessWidget {
                   category.name,
                   style: const TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                   ),
                 ),
@@ -70,7 +70,7 @@ class CategoryTile extends StatelessWidget {
               isIncome ? 'Income' : 'Expense',
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: isIncome ? AppColors.income : AppColors.iconMuted,
               ),
             ),

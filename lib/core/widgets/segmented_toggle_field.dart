@@ -37,7 +37,7 @@ class SegmentedToggleField<T> extends StatelessWidget {
         Text(
           label,
           style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
           ),
         ),
@@ -113,7 +113,7 @@ class _SegmentedToggleOption<T> extends StatelessWidget {
               item.label,
               style: TextStyle(
                 color: foregroundColor,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],

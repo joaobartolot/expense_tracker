@@ -164,7 +164,7 @@ class _CategoryIconPickerDialogState extends State<_CategoryIconPickerDialog> {
                       child: Text(
                         'Choose an icon',
                         style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                         ),
                       ),
@@ -233,7 +233,7 @@ class _CategoryIconPickerDialogState extends State<_CategoryIconPickerDialog> {
                           'No icons match your search.',
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],

@@ -233,7 +233,7 @@ class _HomePageState extends State<HomePage> {
           Text(
             'Hello',
             style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
           ),

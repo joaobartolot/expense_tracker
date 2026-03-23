@@ -297,7 +297,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     Text(
                       _isEditing ? 'Update this entry' : 'Create a new entry',
                       style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
                       ),
                     ),

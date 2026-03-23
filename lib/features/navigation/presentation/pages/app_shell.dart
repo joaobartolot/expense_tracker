@@ -101,7 +101,7 @@ class _PlaceholderPage extends StatelessWidget {
           label,
           style: theme.textTheme.headlineMedium?.copyWith(
             color: AppColors.textPrimary,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),

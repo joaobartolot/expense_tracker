@@ -54,7 +54,7 @@ class TransactionTile extends StatelessWidget {
                         transaction.title,
                         style: const TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                         ),
                       ),
@@ -74,7 +74,7 @@ class TransactionTile extends StatelessWidget {
                   '${isIncome ? '+' : '-'}${formatCurrency(transaction.amount)}',
                   style: TextStyle(
                     fontSize: 15,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     color: isIncome ? AppColors.income : AppColors.textPrimary,
                   ),
                 ),

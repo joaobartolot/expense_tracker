@@ -68,7 +68,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
           Text(
             'Categories',
             style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
           ),
@@ -179,7 +179,7 @@ class _CategoryStat extends StatelessWidget {
           Text(
             value,
             style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
               color: accentColor,
             ),
           ),

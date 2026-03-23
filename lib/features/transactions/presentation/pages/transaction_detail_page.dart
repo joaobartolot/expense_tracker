@@ -163,8 +163,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     transaction.title,
                     style: theme.textTheme.headlineSmall?.copyWith(
                       color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -172,8 +172,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     '$amountPrefix${formatCurrency(transaction.amount)}',
                     style: theme.textTheme.displaySmall?.copyWith(
                       color: amountColor,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.8,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.6,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -299,7 +299,7 @@ class _SectionCard extends StatelessWidget {
             title,
             style: theme.textTheme.titleMedium?.copyWith(
               color: AppColors.textPrimary,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 16),
@@ -352,7 +352,7 @@ class _DetailTile extends StatelessWidget {
                   label,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -360,7 +360,7 @@ class _DetailTile extends StatelessWidget {
                   value,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -397,7 +397,7 @@ class _StatusBadge extends StatelessWidget {
         label,
         style: theme.textTheme.labelLarge?.copyWith(
           color: textColor,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

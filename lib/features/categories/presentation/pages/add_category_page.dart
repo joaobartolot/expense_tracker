@@ -132,7 +132,7 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
                     Text(
                       'Create a new category',
                       style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
                       ),
                     ),

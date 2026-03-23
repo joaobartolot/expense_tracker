@@ -42,7 +42,7 @@ class BalanceCard extends StatelessWidget {
             formatCurrency(balance),
             style: theme.textTheme.displaySmall?.copyWith(
               color: AppColors.white,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],

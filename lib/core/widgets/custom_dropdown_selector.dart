@@ -87,7 +87,7 @@ class _CustomDropdownSelectorState<T> extends State<CustomDropdownSelector<T>>
         Text(
           widget.label,
           style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
           ),
         ),
@@ -229,7 +229,7 @@ class _DropdownSelectorContent<T> extends StatelessWidget {
               Text(
                 item.label,
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                 ),
               ),

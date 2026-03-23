@@ -33,7 +33,7 @@ class AppTextInput extends StatelessWidget {
         Text(
           label,
           style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
           ),
         ),
@@ -61,7 +61,7 @@ class AppTextInput extends StatelessWidget {
             prefixStyle:
                 prefixStyle ??
                 theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                 ),
             enabledBorder: _border(AppColors.border),
