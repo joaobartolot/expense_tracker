@@ -5,10 +5,23 @@ class AppTheme {
   const AppTheme._();
 
   static ThemeData light() {
-    final baseTextTheme = Typography.material2021().black.apply(
-      bodyColor: AppColors.textPrimary,
-      displayColor: AppColors.textPrimary,
-    );
+    return _buildTheme(Brightness.light);
+  }
+
+  static ThemeData dark() {
+    return _buildTheme(Brightness.dark);
+  }
+
+  static ThemeData _buildTheme(Brightness brightness) {
+    final palette = AppColors.paletteFor(brightness);
+    final baseTextTheme =
+        (brightness == Brightness.dark
+                ? Typography.material2021().white
+                : Typography.material2021().black)
+            .apply(
+              bodyColor: palette.textPrimary,
+              displayColor: palette.textPrimary,
+            );
     final textTheme = baseTextTheme.copyWith(
       displaySmall: baseTextTheme.displaySmall?.copyWith(
         fontSize: 32,
@@ -70,22 +83,37 @@ class AppTheme {
     return ThemeData(
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.brand,
-        brightness: Brightness.light,
+        brightness: brightness,
       ),
-      scaffoldBackgroundColor: AppColors.background,
+      brightness: brightness,
+      scaffoldBackgroundColor: palette.background,
+      canvasColor: palette.background,
+      cardColor: palette.surface,
+      dialogTheme: DialogThemeData(
+        backgroundColor: palette.surface,
+        surfaceTintColor: Colors.transparent,
+      ),
+      dividerColor: palette.border,
       textTheme: textTheme,
       appBarTheme: AppBarTheme(
         centerTitle: false,
-        backgroundColor: AppColors.background,
-        foregroundColor: AppColors.textPrimary,
+        backgroundColor: palette.background,
+        foregroundColor: palette.textPrimary,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: textTheme.titleLarge,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: palette.surface,
+        hintStyle: textTheme.bodyLarge?.copyWith(color: palette.textSecondary),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           textStyle: textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w600,
           ),
+          backgroundColor: AppColors.brand,
+          foregroundColor: AppColors.white,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -93,6 +121,8 @@ class AppTheme {
           textStyle: textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w600,
           ),
+          side: BorderSide(color: palette.border),
+          foregroundColor: palette.textPrimary,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -100,6 +130,7 @@ class AppTheme {
           textStyle: textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w600,
           ),
+          foregroundColor: AppColors.brand,
         ),
       ),
       useMaterial3: true,

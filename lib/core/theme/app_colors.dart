@@ -1,3 +1,4 @@
+import 'package:expense_tracker/core/navigation/app_navigator_key.dart';
 import 'package:flutter/material.dart';
 
 class AppColors {
@@ -5,18 +6,24 @@ class AppColors {
 
   static const Color brand = Color(0xFF0F766E);
   static const Color brandDark = Color(0xFF134E4A);
+  static const Color _lightBackground = Color(0xFFF4F7F5);
+  static const Color _darkBackground = Color(0xFF071412);
+  static const Color _lightSurface = Colors.white;
+  static const Color _darkSurface = Color(0xFF10211F);
+  static const Color _lightTextPrimary = Color(0xFF111827);
+  static const Color _darkTextPrimary = Color(0xFFF3F7F5);
+  static const Color _lightTextSecondary = Color(0xFF6B7280);
+  static const Color _darkTextSecondary = Color(0xFF9FB2AE);
+  static const Color _lightIconMuted = Color(0xFF374151);
+  static const Color _darkIconMuted = Color(0xFFC7D5D1);
+  static const Color _lightBorder = Color(0xFFD7DFDA);
+  static const Color _darkBorder = Color(0xFF29403D);
+  static const Color _lightIncomeSurface = Color(0xFFD1FAE5);
+  static const Color _darkIncomeSurface = Color(0xFF0B3D36);
+  static const Color _lightExpenseSurface = Color(0xFFE5E7EB);
+  static const Color _darkExpenseSurface = Color(0xFF1B2C30);
 
-  static const Color background = Color(0xFFF4F7F5);
-  static const Color surface = Colors.white;
-
-  static const Color textPrimary = Color(0xFF111827);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color iconMuted = Color(0xFF374151);
-  static const Color border = Color(0xFFD7DFDA);
-
-  static const Color incomeSurface = Color(0xFFD1FAE5);
   static const Color income = Color(0xFF047857);
-  static const Color expenseSurface = Color(0xFFE5E7EB);
   static const Color dangerSurface = Color(0xFFFEE2E2);
   static const Color danger = Color(0xFFDC2626);
   static const Color dangerDark = Color(0xFF991B1B);
@@ -25,4 +32,76 @@ class AppColors {
   static const Color whiteMuted = Colors.white70;
 
   static const Color shadow = Color(0x22000000);
+
+  static Brightness _brightness() {
+    final context = appNavigatorKey.currentContext;
+    if (context != null) {
+      return Theme.of(context).brightness;
+    }
+
+    return WidgetsBinding.instance.platformDispatcher.platformBrightness;
+  }
+
+  static AppColorPalette get currentPalette {
+    return paletteFor(_brightness());
+  }
+
+  static AppColorPalette of(BuildContext context) {
+    return paletteFor(Theme.of(context).brightness);
+  }
+
+  static AppColorPalette paletteFor(Brightness brightness) {
+    return brightness == Brightness.dark
+        ? const AppColorPalette(
+            background: _darkBackground,
+            surface: _darkSurface,
+            textPrimary: _darkTextPrimary,
+            textSecondary: _darkTextSecondary,
+            iconMuted: _darkIconMuted,
+            border: _darkBorder,
+            incomeSurface: _darkIncomeSurface,
+            expenseSurface: _darkExpenseSurface,
+          )
+        : const AppColorPalette(
+            background: _lightBackground,
+            surface: _lightSurface,
+            textPrimary: _lightTextPrimary,
+            textSecondary: _lightTextSecondary,
+            iconMuted: _lightIconMuted,
+            border: _lightBorder,
+            incomeSurface: _lightIncomeSurface,
+            expenseSurface: _lightExpenseSurface,
+          );
+  }
+
+  static Color get background => currentPalette.background;
+  static Color get surface => currentPalette.surface;
+  static Color get textPrimary => currentPalette.textPrimary;
+  static Color get textSecondary => currentPalette.textSecondary;
+  static Color get iconMuted => currentPalette.iconMuted;
+  static Color get border => currentPalette.border;
+  static Color get incomeSurface => currentPalette.incomeSurface;
+  static Color get expenseSurface => currentPalette.expenseSurface;
+}
+
+class AppColorPalette {
+  const AppColorPalette({
+    required this.background,
+    required this.surface,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.iconMuted,
+    required this.border,
+    required this.incomeSurface,
+    required this.expenseSurface,
+  });
+
+  final Color background;
+  final Color surface;
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color iconMuted;
+  final Color border;
+  final Color incomeSurface;
+  final Color expenseSurface;
 }

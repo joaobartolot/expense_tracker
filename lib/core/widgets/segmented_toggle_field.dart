@@ -30,6 +30,7 @@ class SegmentedToggleField<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = AppColors.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -38,14 +39,14 @@ class SegmentedToggleField<T> extends StatelessWidget {
           label,
           style: theme.textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: colors.textPrimary,
           ),
         ),
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: AppColors.background,
+            color: colors.background,
             borderRadius: BorderRadius.circular(24),
           ),
           child: Row(
@@ -81,9 +82,8 @@ class _SegmentedToggleOption<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foregroundColor = isSelected
-        ? AppColors.white
-        : AppColors.textPrimary;
+    final colors = AppColors.of(context);
+    final foregroundColor = isSelected ? AppColors.white : colors.textPrimary;
 
     return InkWell(
       onTap: onTap,
@@ -92,7 +92,7 @@ class _SegmentedToggleOption<T> extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.brand : AppColors.surface,
+          color: isSelected ? AppColors.brand : colors.surface,
           borderRadius: BorderRadius.circular(20),
           boxShadow: isSelected
               ? const [
@@ -107,13 +107,23 @@ class _SegmentedToggleOption<T> extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(item.icon, size: 18, color: foregroundColor),
-            const SizedBox(width: 8),
-            Text(
-              item.label,
-              style: TextStyle(
-                color: foregroundColor,
-                fontWeight: FontWeight.w600,
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(item.icon, size: 18, color: foregroundColor),
+                  const SizedBox(height: 6),
+                  Text(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: foregroundColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

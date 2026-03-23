@@ -2,6 +2,7 @@ import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/date_label_formatter.dart';
 import 'package:expense_tracker/features/categories/data/category_repository.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
+import 'package:expense_tracker/features/settings/data/settings_repository.dart';
 import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:expense_tracker/features/transactions/presentation/pages/add_transaction_page.dart';
@@ -9,6 +10,7 @@ import 'package:expense_tracker/features/transactions/presentation/pages/transac
 import 'package:expense_tracker/features/transactions/presentation/widgets/balance_card.dart';
 import 'package:expense_tracker/features/transactions/presentation/widgets/transaction_group.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 
 enum _TransactionListAction { edit, delete }
 
@@ -17,10 +19,12 @@ class HomePage extends StatefulWidget {
     super.key,
     required this.repository,
     required this.categoryRepository,
+    required this.settingsRepository,
   });
 
   final TransactionRepository repository;
   final CategoryRepository categoryRepository;
+  final SettingsRepository settingsRepository;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -179,7 +183,7 @@ class _HomePageState extends State<HomePage> {
         overlay.size.width - left - menuWidth,
         overlay.size.height - top - menuHeight,
       ),
-      items: const [
+      items: [
         PopupMenuItem(
           value: _TransactionListAction.edit,
           height: 40,
@@ -237,12 +241,19 @@ class _HomePageState extends State<HomePage> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
-          Text(
-            'Hello',
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
+          ValueListenableBuilder<Box<dynamic>>(
+            valueListenable: widget.settingsRepository.listenable(),
+            builder: (context, value, child) {
+              final greeting = widget.settingsRepository.getSettings().greeting;
+
+              return Text(
+                greeting,
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              );
+            },
           ),
           const SizedBox(height: 20),
           BalanceCard(balance: balance),
@@ -265,7 +276,7 @@ class _HomePageState extends State<HomePage> {
                     horizontal: 4,
                     vertical: 6,
                   ),
-                  child: const Icon(Icons.add, color: AppColors.brand),
+                  child: Icon(Icons.add, color: AppColors.brand),
                 ),
               ),
             ],

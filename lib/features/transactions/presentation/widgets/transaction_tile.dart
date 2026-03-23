@@ -56,7 +56,7 @@ class TransactionTile extends StatelessWidget {
                     children: [
                       Text(
                         transaction.title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
@@ -65,7 +65,7 @@ class TransactionTile extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         categoryName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           color: AppColors.textSecondary,
                         ),

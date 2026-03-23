@@ -11,9 +11,11 @@ class HiveStorage {
 
   static const String categoriesBoxName = 'categories_box';
   static const String transactionsBoxName = 'transactions_box';
+  static const String settingsBoxName = 'settings_box';
 
   static const String categoriesKey = 'categories';
   static const String transactionsKey = 'transactions';
+  static const String settingsKey = 'settings';
   static const _uuid = Uuid();
   static final _logger = Logger(printer: ScopedLogPrinter('hive_storage'));
 
@@ -22,6 +24,7 @@ class HiveStorage {
 
     final categoriesBox = await Hive.openBox(categoriesBoxName);
     final transactionsBox = await Hive.openBox(transactionsBoxName);
+    final settingsBox = await Hive.openBox(settingsBoxName);
 
     if (categoriesBox.get(categoriesKey) == null) {
       await categoriesBox.put(
@@ -62,6 +65,14 @@ class HiveStorage {
         transactionsBox: transactionsBox,
       );
     }
+
+    if (settingsBox.get(settingsKey) == null) {
+      await settingsBox.put(settingsKey, _initialSettings);
+    }
+  }
+
+  static Map<String, dynamic> get _initialSettings {
+    return {'displayName': '', 'themePreference': 'system'};
   }
 
   static List<CategoryItem> get _initialCategories {

@@ -26,6 +26,7 @@ class AppTextInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = AppColors.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -34,7 +35,7 @@ class AppTextInput extends StatelessWidget {
           label,
           style: theme.textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: colors.textPrimary,
           ),
         ),
         const SizedBox(height: 10),
@@ -45,7 +46,7 @@ class AppTextInput extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hintText,
             filled: true,
-            fillColor: AppColors.surface,
+            fillColor: colors.surface,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 18,
               vertical: 18,
@@ -62,9 +63,9 @@ class AppTextInput extends StatelessWidget {
                 prefixStyle ??
                 theme.textTheme.bodyLarge?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
-            enabledBorder: _border(AppColors.border),
+            enabledBorder: _border(colors.border),
             focusedBorder: _border(AppColors.brand, width: 1.4),
             errorBorder: _border(Colors.red.shade400, width: 1.4),
             focusedErrorBorder: _border(Colors.red.shade400, width: 1.4),

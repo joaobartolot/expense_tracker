@@ -217,7 +217,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
         overlay.size.width - left - menuWidth,
         overlay.size.height - top - menuHeight,
       ),
-      items: const [
+      items: [
         PopupMenuItem(
           value: _CategoryListAction.edit,
           height: 40,

@@ -54,7 +54,7 @@ class CategoryTile extends StatelessWidget {
                     children: [
                       Text(
                         category.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
@@ -63,7 +63,7 @@ class CategoryTile extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         category.description,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           color: AppColors.textSecondary,
                         ),

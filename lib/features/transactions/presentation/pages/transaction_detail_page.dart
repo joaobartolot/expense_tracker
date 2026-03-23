@@ -405,10 +405,7 @@ class _DetailTile extends StatelessWidget {
         ),
         if (onTap != null) ...[
           const SizedBox(width: 12),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: AppColors.textSecondary,
-          ),
+          Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
         ],
       ],
     );

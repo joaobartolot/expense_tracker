@@ -15,10 +15,12 @@ class PillBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
     return Container(
       height: 64,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(999),
         boxShadow: const [
           BoxShadow(
@@ -98,6 +100,8 @@ class _NavBarButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
     return Semantics(
       button: true,
       label: data.label,
@@ -119,7 +123,7 @@ class _NavBarButton extends StatelessWidget {
                 isActive ? data.activeIcon : data.icon,
                 key: ValueKey<IconData>(isActive ? data.activeIcon : data.icon),
                 size: 24,
-                color: isActive ? AppColors.brand : AppColors.iconMuted,
+                color: isActive ? AppColors.brand : colors.iconMuted,
               ),
             ),
           ),

@@ -2,6 +2,8 @@ import 'package:expense_tracker/features/categories/data/category_repository.dar
 import 'package:expense_tracker/features/categories/presentation/pages/categories_page.dart';
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
+import 'package:expense_tracker/features/settings/data/settings_repository.dart';
+import 'package:expense_tracker/features/settings/presentation/pages/settings_page.dart';
 import 'package:expense_tracker/features/transactions/presentation/pages/home_page.dart';
 import 'package:expense_tracker/features/navigation/presentation/widgets/pill_bottom_nav_bar.dart';
 import 'package:flutter/material.dart';
@@ -11,10 +13,12 @@ class AppShell extends StatefulWidget {
     super.key,
     required this.repository,
     required this.categoryRepository,
+    required this.settingsRepository,
   });
 
   final TransactionRepository repository;
   final CategoryRepository categoryRepository;
+  final SettingsRepository settingsRepository;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -27,6 +31,7 @@ class _AppShellState extends State<AppShell> {
     HomePage(
       repository: widget.repository,
       categoryRepository: widget.categoryRepository,
+      settingsRepository: widget.settingsRepository,
     ),
     const _PlaceholderPage(label: 'Accounts'),
     CategoriesPage(
@@ -34,7 +39,7 @@ class _AppShellState extends State<AppShell> {
       transactionRepository: widget.repository,
     ),
     const _PlaceholderPage(label: 'Recurring'),
-    const _PlaceholderPage(label: 'Settings'),
+    SettingsPage(repository: widget.settingsRepository),
   ];
 
   static const List<NavItemData> _items = [
@@ -67,8 +72,10 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -97,13 +104,14 @@ class _PlaceholderPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = AppColors.of(context);
 
     return SafeArea(
       child: Center(
         child: Text(
           label,
           style: theme.textTheme.headlineMedium?.copyWith(
-            color: AppColors.textPrimary,
+            color: colors.textPrimary,
             fontWeight: FontWeight.w600,
           ),
         ),

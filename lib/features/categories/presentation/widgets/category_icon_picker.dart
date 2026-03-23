@@ -9,13 +9,13 @@ class CategoryIconPicker extends StatelessWidget {
     required this.selectedIcon,
     required this.onIconSelected,
     this.accentColor = AppColors.brand,
-    this.backgroundColor = AppColors.surface,
+    this.backgroundColor,
   });
 
   final IconData selectedIcon;
   final ValueChanged<IconData> onIconSelected;
   final Color accentColor;
-  final Color backgroundColor;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +25,7 @@ class CategoryIconPicker extends StatelessWidget {
           width: 92,
           height: 92,
           child: Material(
-            color: backgroundColor,
+            color: backgroundColor ?? AppColors.surface,
             shape: const CircleBorder(),
             child: InkWell(
               onTap: () async {
@@ -223,7 +223,7 @@ class _CategoryIconPickerDialogState extends State<_CategoryIconPickerDialog> {
                     ),
                     child: Column(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.search_off_rounded,
                           size: 30,
                           color: AppColors.textSecondary,
