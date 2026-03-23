@@ -37,7 +37,7 @@ class _ExpenseTrackerAppState extends State<ExpenseTrackerApp> {
 
         return MaterialApp(
           navigatorKey: appNavigatorKey,
-          title: 'Expense Tracker',
+          title: 'Vero',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),

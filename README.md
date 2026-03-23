@@ -1,4 +1,4 @@
-# Expense Tracker
+# Vero
 
 A simple, fast, and intuitive budgeting app designed to help users understand their spending, identify patterns, and improve their financial life.
 
