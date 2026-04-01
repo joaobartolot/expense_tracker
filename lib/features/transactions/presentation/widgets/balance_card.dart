@@ -7,16 +7,21 @@ class BalanceCard extends StatelessWidget {
     super.key,
     required this.balance,
     required this.currencyCode,
+    this.title = 'Balance',
+    this.subtitle,
   });
 
   final double balance;
   final String currencyCode;
+  final String title;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
     return HighlightSummaryCard(
-      title: 'Current balance',
+      title: title,
       value: formatCurrency(balance, currencyCode: currencyCode),
+      subtitle: subtitle,
     );
   }
 }

@@ -110,6 +110,7 @@ class HiveTransactionRepository implements TransactionRepository {
   }
 
   Future<void> _saveTransactions(List<TransactionItem> transactions) {
+    _logger.d('Saving ${transactions.length} transactions to Hive.');
     return _box.put(
       HiveStorage.transactionsKey,
       transactions.map((item) => item.toMap()).toList(growable: false),
@@ -117,6 +118,7 @@ class HiveTransactionRepository implements TransactionRepository {
   }
 
   List<TransactionItem> _readTransactions() {
+    _logger.d('Reading transactions from Hive.');
     final storedTransactions =
         (_box.get(HiveStorage.transactionsKey) as List<dynamic>? ?? const [])
             .cast<Map<dynamic, dynamic>>();

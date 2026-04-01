@@ -2,12 +2,12 @@ import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/widgets/context_action_menu.dart';
 import 'package:expense_tracker/features/accounts/data/account_repository.dart';
 import 'package:expense_tracker/features/accounts/domain/models/account.dart';
+import 'package:expense_tracker/features/accounts/domain/services/balance_overview_service.dart';
 import 'package:expense_tracker/features/accounts/presentation/pages/add_account_page.dart';
 import 'package:expense_tracker/features/accounts/presentation/widgets/account_summary_card.dart';
 import 'package:expense_tracker/features/accounts/presentation/widgets/account_tile.dart';
 import 'package:expense_tracker/features/settings/data/settings_repository.dart';
 import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
-import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
@@ -17,6 +17,7 @@ class AccountsPage extends StatefulWidget {
     required this.repository,
     required this.transactionRepository,
     required this.settingsRepository,
+    required this.balanceOverviewService,
   });
 
   static const double _floatingNavClearance = 128;
@@ -24,6 +25,7 @@ class AccountsPage extends StatefulWidget {
   final AccountRepository repository;
   final TransactionRepository transactionRepository;
   final SettingsRepository settingsRepository;
+  final BalanceOverviewService balanceOverviewService;
 
   @override
   State<AccountsPage> createState() => _AccountsPageState();
@@ -186,22 +188,19 @@ class _AccountsPageState extends State<AccountsPage> {
             valueListenable: widget.transactionRepository.listenable(),
             builder: (context, transactionValue, child) {
               return FutureBuilder<
-                ({List<Account> accounts, List<TransactionItem> transactions})
+                ({
+                  List<Account> accounts,
+                  double globalBalance,
+                  Map<String, double> effectiveBalances,
+                })
               >(
                 future: _loadPageData(),
                 builder: (context, snapshot) {
                   final accounts = snapshot.data?.accounts ?? const <Account>[];
-                  final transactions =
-                      snapshot.data?.transactions ?? const <TransactionItem>[];
-                  final effectiveBalances = _effectiveBalances(
-                    accounts: accounts,
-                    transactions: transactions,
-                  );
-                  // TODO: Convert account balances before aggregating when accounts use different currencies.
-                  final totalBalance = effectiveBalances.values.fold<double>(
-                    0,
-                    (sum, balance) => sum + balance,
-                  );
+                  final totalBalance = snapshot.data?.globalBalance ?? 0;
+                  final effectiveBalances =
+                      snapshot.data?.effectiveBalances ??
+                      const <String, double>{};
 
                   return ListView(
                     padding: EdgeInsets.fromLTRB(
@@ -397,39 +396,25 @@ class _AccountsPageState extends State<AccountsPage> {
     );
   }
 
-  Future<({List<Account> accounts, List<TransactionItem> transactions})>
+  Future<
+    ({
+      List<Account> accounts,
+      double globalBalance,
+      Map<String, double> effectiveBalances,
+    })
+  >
   _loadPageData() async {
     final results = await Future.wait<dynamic>([
       widget.repository.getAccounts(),
-      widget.transactionRepository.getTransactions(),
+      widget.balanceOverviewService.getGlobalBalance(),
+      widget.balanceOverviewService.getEffectiveBalances(),
     ]);
 
     return (
       accounts: results[0] as List<Account>,
-      transactions: results[1] as List<TransactionItem>,
+      globalBalance: results[1] as double,
+      effectiveBalances: results[2] as Map<String, double>,
     );
-  }
-
-  Map<String, double> _effectiveBalances({
-    required List<Account> accounts,
-    required List<TransactionItem> transactions,
-  }) {
-    final balances = {
-      for (final account in accounts) account.id: account.balance,
-    };
-
-    for (final transaction in transactions) {
-      for (final entry in transaction.balanceChanges.entries) {
-        final accountId = entry.key;
-        if (!balances.containsKey(accountId)) {
-          continue;
-        }
-
-        balances[accountId] = balances[accountId]! + entry.value;
-      }
-    }
-
-    return balances;
   }
 }
 

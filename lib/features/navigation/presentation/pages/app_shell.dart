@@ -1,5 +1,6 @@
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/features/accounts/data/account_repository.dart';
+import 'package:expense_tracker/features/accounts/domain/services/balance_overview_service.dart';
 import 'package:expense_tracker/features/accounts/presentation/pages/accounts_page.dart';
 import 'package:expense_tracker/features/categories/data/category_repository.dart';
 import 'package:expense_tracker/features/categories/presentation/pages/categories_page.dart';
@@ -17,12 +18,14 @@ class AppShell extends StatefulWidget {
     required this.categoryRepository,
     required this.settingsRepository,
     required this.accountRepository,
+    required this.balanceOverviewService,
   });
 
   final TransactionRepository repository;
   final CategoryRepository categoryRepository;
   final SettingsRepository settingsRepository;
   final AccountRepository accountRepository;
+  final BalanceOverviewService balanceOverviewService;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -41,11 +44,13 @@ class _AppShellState extends State<AppShell> {
       categoryRepository: widget.categoryRepository,
       settingsRepository: widget.settingsRepository,
       accountRepository: widget.accountRepository,
+      balanceOverviewService: widget.balanceOverviewService,
     ),
     AccountsPage(
       repository: widget.accountRepository,
       transactionRepository: widget.repository,
       settingsRepository: widget.settingsRepository,
+      balanceOverviewService: widget.balanceOverviewService,
     ),
     CategoriesPage(
       repository: widget.categoryRepository,

@@ -1,4 +1,5 @@
 import 'package:expense_tracker/features/accounts/data/hive_account_repository.dart';
+import 'package:expense_tracker/features/accounts/domain/services/balance_overview_service.dart';
 import 'package:expense_tracker/core/navigation/app_navigator_key.dart';
 import 'package:expense_tracker/core/theme/app_theme.dart';
 import 'package:expense_tracker/features/categories/data/hive_category_repository.dart';
@@ -20,6 +21,7 @@ class _ExpenseTrackerAppState extends State<ExpenseTrackerApp> {
   late final HiveTransactionRepository _transactionRepository;
   late final HiveCategoryRepository _categoryRepository;
   late final HiveAccountRepository _accountRepository;
+  late final BalanceOverviewService _balanceOverviewService;
 
   @override
   void initState() {
@@ -28,6 +30,10 @@ class _ExpenseTrackerAppState extends State<ExpenseTrackerApp> {
     _transactionRepository = HiveTransactionRepository();
     _categoryRepository = HiveCategoryRepository();
     _accountRepository = HiveAccountRepository();
+    _balanceOverviewService = BalanceOverviewService(
+      accountRepository: _accountRepository,
+      transactionRepository: _transactionRepository,
+    );
   }
 
   @override
@@ -55,6 +61,7 @@ class _ExpenseTrackerAppState extends State<ExpenseTrackerApp> {
             categoryRepository: _categoryRepository,
             settingsRepository: _settingsRepository,
             accountRepository: _accountRepository,
+            balanceOverviewService: _balanceOverviewService,
           ),
         );
       },
