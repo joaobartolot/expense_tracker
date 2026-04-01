@@ -51,6 +51,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   List<Account> _accounts = const [];
   List<CategoryItem> _categories = const [];
   Account? _selectedAccount;
+  Account? _selectedSourceAccount;
+  Account? _selectedDestinationAccount;
   CategoryItem? _selectedCategory;
   String _selectedEntryCurrencyCode = 'EUR';
   bool _showsAdvancedFields = false;
@@ -135,6 +137,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       _accounts = accounts;
       _categories = categories;
       _selectedAccount = _resolveSelectedAccount(accounts);
+      _selectedSourceAccount = _resolveSelectedSourceAccount(accounts);
+      _selectedDestinationAccount = _resolveSelectedDestinationAccount(
+        accounts,
+      );
       _selectedCategory = _resolveSelectedCategory(categories);
     });
   }
@@ -166,6 +172,47 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
     for (final account in accounts) {
       if (account.id == initialTransaction.accountId) {
+        return account;
+      }
+    }
+
+    return null;
+  }
+
+  Account? _resolveSelectedSourceAccount(List<Account> accounts) {
+    final selectedAccount =
+        _selectedSourceAccount ??
+        _accountById(accounts, widget.initialTransaction?.sourceAccountId);
+
+    if (selectedAccount != null) {
+      return _accountById(accounts, selectedAccount.id);
+    }
+
+    return accounts.firstOrNull;
+  }
+
+  Account? _resolveSelectedDestinationAccount(List<Account> accounts) {
+    final selectedAccount =
+        _selectedDestinationAccount ??
+        _accountById(accounts, widget.initialTransaction?.destinationAccountId);
+
+    if (selectedAccount != null) {
+      return _accountById(accounts, selectedAccount.id);
+    }
+
+    final sourceAccountId = _selectedSourceAccount?.id;
+    return accounts
+        .where((account) => account.id != sourceAccountId)
+        .firstOrNull;
+  }
+
+  Account? _accountById(List<Account> accounts, String? accountId) {
+    if (accountId == null) {
+      return null;
+    }
+
+    for (final account in accounts) {
+      if (account.id == accountId) {
         return account;
       }
     }
@@ -259,9 +306,14 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       _availableCategoriesFrom(_categories);
 
   List<CategoryItem> _availableCategoriesFrom(List<CategoryItem> categories) {
+    if (_type == TransactionType.transfer) {
+      return const [];
+    }
+
     final expectedType = switch (_type) {
       TransactionType.income => CategoryType.income,
       TransactionType.expense => CategoryType.expense,
+      TransactionType.transfer => CategoryType.expense,
     };
 
     return categories
@@ -270,6 +322,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   bool get _usesForeignCurrency =>
+      _type != TransactionType.transfer &&
       _showsAdvancedFields &&
       _selectedEntryCurrencyCode != _defaultCurrencyCode;
 
@@ -326,6 +379,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   String? get _accountError {
+    if (_type == TransactionType.transfer) {
+      return null;
+    }
+
     if (!_didTrySubmit) {
       return null;
     }
@@ -342,12 +399,56 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   String? get _categoryError {
+    if (_type == TransactionType.transfer) {
+      return null;
+    }
+
     if (!_didTrySubmit) {
       return null;
     }
 
     if (_selectedCategory == null) {
       return 'Please choose a category.';
+    }
+
+    return null;
+  }
+
+  String? get _sourceAccountError {
+    if (_type != TransactionType.transfer || !_didTrySubmit) {
+      return null;
+    }
+
+    if (_accounts.length < 2) {
+      return 'Create at least two accounts before adding a transfer.';
+    }
+
+    if (_selectedSourceAccount == null) {
+      return 'Please choose a source account.';
+    }
+
+    if (_selectedSourceAccount?.id == _selectedDestinationAccount?.id) {
+      return 'Source and destination must be different.';
+    }
+
+    return null;
+  }
+
+  String? get _destinationAccountError {
+    if (_type != TransactionType.transfer || !_didTrySubmit) {
+      return null;
+    }
+
+    if (_accounts.length < 2) {
+      return 'Create at least two accounts before adding a transfer.';
+    }
+
+    if (_selectedDestinationAccount == null) {
+      return 'Please choose a destination account.';
+    }
+
+    if (_selectedSourceAccount?.id == _selectedDestinationAccount?.id) {
+      return 'Source and destination must be different.';
     }
 
     return null;
@@ -475,13 +576,21 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         _exchangeRateError != null ||
         _isFetchingExchangeRate ||
         _accountError != null ||
-        _categoryError != null) {
+        _categoryError != null ||
+        _sourceAccountError != null ||
+        _destinationAccountError != null) {
       return;
     }
 
     final selectedAccount = _selectedAccount;
+    final selectedSourceAccount = _selectedSourceAccount;
+    final selectedDestinationAccount = _selectedDestinationAccount;
     final selectedCategory = _selectedCategory;
-    if (selectedAccount == null || selectedCategory == null) {
+    if (_type == TransactionType.transfer) {
+      if (selectedSourceAccount == null || selectedDestinationAccount == null) {
+        return;
+      }
+    } else if (selectedAccount == null || selectedCategory == null) {
       return;
     }
 
@@ -496,12 +605,23 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       transaction = TransactionItem(
         id: initialTransaction?.id ?? widget.repository.createTransactionId(),
         title: _nameController.text.trim(),
-        categoryId: selectedCategory.id,
-        accountId: selectedAccount.id,
+        categoryId: _type == TransactionType.transfer
+            ? null
+            : selectedCategory!.id,
+        accountId: _type == TransactionType.transfer
+            ? null
+            : selectedAccount!.id,
         amount: _convertedAmountValue,
         currencyCode: _defaultCurrencyCode,
+        // TODO: Let users pick a custom transaction date instead of always using now/preserved date.
         date: initialTransaction?.date ?? DateTime.now(),
         type: _type,
+        sourceAccountId: _type == TransactionType.transfer
+            ? selectedSourceAccount!.id
+            : null,
+        destinationAccountId: _type == TransactionType.transfer
+            ? selectedDestinationAccount!.id
+            : null,
         foreignAmount: _usesForeignCurrency ? _enteredAmountValue : null,
         foreignCurrencyCode: _usesForeignCurrency
             ? _selectedEntryCurrencyCode
@@ -552,6 +672,18 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     setState(() {
       _type = type;
       _selectedCategory = null;
+      if (type == TransactionType.transfer) {
+        _showsAdvancedFields = false;
+        _selectedEntryCurrencyCode = _defaultCurrencyCode;
+        _exchangeRateValue = 1;
+        _exchangeRateErrorMessage = null;
+        _selectedSourceAccount ??= _selectedAccount ?? _accounts.firstOrNull;
+        _selectedDestinationAccount ??= _accounts
+            .where((account) => account.id != _selectedSourceAccount?.id)
+            .firstOrNull;
+      } else {
+        _selectedAccount ??= _selectedSourceAccount ?? _accounts.firstOrNull;
+      }
     });
   }
 
@@ -560,6 +692,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final theme = Theme.of(context);
     final availableCategories = _availableCategories;
     final showAccountSelector = _accounts.length > 1;
+    final isTransfer = _type == TransactionType.transfer;
     final accountItems = _accounts
         .map(
           (account) => DropdownSelectorItem<Account>(
@@ -661,6 +794,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                           label: 'Income',
                           icon: Icons.arrow_downward_rounded,
                         ),
+                        SegmentedToggleItem(
+                          value: TransactionType.transfer,
+                          label: 'Transfer',
+                          icon: Icons.swap_horiz_rounded,
+                        ),
                       ],
                       onChanged: _updateType,
                     ),
@@ -673,7 +811,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                       errorText: _nameError,
                     ),
                     const SizedBox(height: 16),
-                    if (showAccountSelector) ...[
+                    if (isTransfer && _accounts.length < 2) ...[
+                      _TransferAccountsBanner(
+                        hasAccounts: _accounts.isNotEmpty,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    if (!isTransfer && showAccountSelector) ...[
                       CustomDropdownSelector<Account>(
                         label: 'Account',
                         hintText: 'Choose an account',
@@ -687,8 +831,41 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                         },
                       ),
                       const SizedBox(height: 16),
-                    ] else if (_accounts.length == 1) ...[
+                    ] else if (!isTransfer && _accounts.length == 1) ...[
                       _SingleAccountBanner(account: _accounts.first),
+                      const SizedBox(height: 16),
+                    ],
+                    if (isTransfer && _accounts.isNotEmpty) ...[
+                      CustomDropdownSelector<Account>(
+                        label: 'From account',
+                        hintText: 'Choose a source account',
+                        value: _selectedSourceAccount,
+                        items: accountItems,
+                        errorText: _sourceAccountError,
+                        onChanged: (account) {
+                          setState(() {
+                            _selectedSourceAccount = account;
+                            if (_selectedDestinationAccount?.id == account.id) {
+                              _selectedDestinationAccount = _accounts
+                                  .where((item) => item.id != account.id)
+                                  .firstOrNull;
+                            }
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      CustomDropdownSelector<Account>(
+                        label: 'To account',
+                        hintText: 'Choose a destination account',
+                        value: _selectedDestinationAccount,
+                        items: accountItems,
+                        errorText: _destinationAccountError,
+                        onChanged: (account) {
+                          setState(() {
+                            _selectedDestinationAccount = account;
+                          });
+                        },
+                      ),
                       const SizedBox(height: 16),
                     ],
                     AppTextInput(
@@ -700,62 +877,65 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                       prefixText: _amountPrefix,
                     ),
                     const SizedBox(height: 16),
-                    CustomDropdownSelector<CategoryItem>(
-                      label: 'Category',
-                      hintText: availableCategories.isEmpty
-                          ? 'No categories available'
-                          : 'Choose a category',
-                      value: _selectedCategory,
-                      items: categoryItems,
-                      errorText: _categoryError,
-                      onChanged: (category) {
-                        setState(() {
-                          _selectedCategory = category;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: OutlinedButton.icon(
-                        onPressed: () =>
-                            _setAdvancedFieldsVisible(!_showsAdvancedFields),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.textPrimary,
-                          side: BorderSide(color: AppColors.border),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 14,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                        ),
-                        icon: Icon(
-                          _showsAdvancedFields
-                              ? Icons.tune_rounded
-                              : Icons.tune_outlined,
-                        ),
-                        label: Text(
-                          _showsAdvancedFields ? 'Hide advanced' : 'Advanced',
-                        ),
+                    if (!isTransfer) ...[
+                      CustomDropdownSelector<CategoryItem>(
+                        label: 'Category',
+                        hintText: availableCategories.isEmpty
+                            ? 'No categories available'
+                            : 'Choose a category',
+                        value: _selectedCategory,
+                        items: categoryItems,
+                        errorText: _categoryError,
+                        onChanged: (category) {
+                          setState(() {
+                            _selectedCategory = category;
+                          });
+                        },
                       ),
-                    ),
-                    if (_showsAdvancedFields) ...[
                       const SizedBox(height: 16),
-                      _AdvancedCurrencySection(
-                        entryCurrencyCode: _selectedEntryCurrencyCode,
-                        defaultCurrencyCode: _defaultCurrencyCode,
-                        currencyItems: currencyItems,
-                        convertedAmount: _convertedAmountValue,
-                        enteredAmount: _enteredAmountValue,
-                        isFetchingExchangeRate: _isFetchingExchangeRate,
-                        hasResolvedExchangeRate: _exchangeRateValue != null,
-                        exchangeRate: _exchangeRateValue,
-                        exchangeRateError: _exchangeRateError,
-                        onCurrencyChanged: _updateEntryCurrency,
-                        onRetryExchangeRate: _syncExchangeRateIfNeeded,
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton.icon(
+                          onPressed: () =>
+                              _setAdvancedFieldsVisible(!_showsAdvancedFields),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textPrimary,
+                            side: BorderSide(color: AppColors.border),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          icon: Icon(
+                            _showsAdvancedFields
+                                ? Icons.tune_rounded
+                                : Icons.tune_outlined,
+                          ),
+                          label: Text(
+                            _showsAdvancedFields ? 'Hide advanced' : 'Advanced',
+                          ),
+                        ),
                       ),
+                      if (_showsAdvancedFields) ...[
+                        const SizedBox(height: 16),
+                        // TODO: Expand advanced transaction fields with notes and tags, not just currency options.
+                        _AdvancedCurrencySection(
+                          entryCurrencyCode: _selectedEntryCurrencyCode,
+                          defaultCurrencyCode: _defaultCurrencyCode,
+                          currencyItems: currencyItems,
+                          convertedAmount: _convertedAmountValue,
+                          enteredAmount: _enteredAmountValue,
+                          isFetchingExchangeRate: _isFetchingExchangeRate,
+                          hasResolvedExchangeRate: _exchangeRateValue != null,
+                          exchangeRate: _exchangeRateValue,
+                          exchangeRateError: _exchangeRateError,
+                          onCurrencyChanged: _updateEntryCurrency,
+                          onRetryExchangeRate: _syncExchangeRateIfNeeded,
+                        ),
+                      ],
                     ],
                   ],
                 ),
@@ -824,6 +1004,43 @@ class _SingleAccountBanner extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TransferAccountsBanner extends StatelessWidget {
+  const _TransferAccountsBanner({required this.hasAccounts});
+
+  final bool hasAccounts;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.swap_horiz_rounded, color: AppColors.textPrimary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              hasAccounts
+                  ? 'Transfers need two different accounts. Add another account to move money between them.'
+                  : 'Create at least two accounts before recording a transfer.',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
         ],

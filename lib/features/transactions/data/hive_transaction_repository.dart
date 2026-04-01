@@ -10,6 +10,15 @@ import 'package:uuid/uuid.dart';
 final _logger = Logger(printer: ScopedLogPrinter('transactions_repository'));
 const _uuid = Uuid();
 
+class TransactionValidationException implements Exception {
+  const TransactionValidationException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'TransactionValidationException: $message';
+}
+
 class HiveTransactionRepository implements TransactionRepository {
   HiveTransactionRepository()
     : _box = Hive.box(HiveStorage.transactionsBoxName);
@@ -38,6 +47,7 @@ class HiveTransactionRepository implements TransactionRepository {
   @override
   Future<void> addTransaction(TransactionItem transaction) async {
     try {
+      _validateTransaction(transaction);
       final transactions = _readTransactions()..insert(0, transaction);
       await _saveTransactions(transactions);
       _logger.i('Saved transaction ${transaction.id}.');
@@ -54,6 +64,7 @@ class HiveTransactionRepository implements TransactionRepository {
   @override
   Future<void> updateTransaction(TransactionItem transaction) async {
     try {
+      _validateTransaction(transaction);
       final transactions = _readTransactions();
       final index = transactions.indexWhere(
         (item) => item.id == transaction.id,
@@ -111,5 +122,38 @@ class HiveTransactionRepository implements TransactionRepository {
             .cast<Map<dynamic, dynamic>>();
 
     return storedTransactions.map(TransactionItem.fromMap).toList();
+  }
+
+  void _validateTransaction(TransactionItem transaction) {
+    if (transaction.amount <= 0) {
+      throw const TransactionValidationException(
+        'Transaction amount must be greater than zero.',
+      );
+    }
+
+    if (transaction.isTransfer) {
+      final sourceAccountId = transaction.sourceAccountId;
+      final destinationAccountId = transaction.destinationAccountId;
+
+      if (sourceAccountId == null || destinationAccountId == null) {
+        throw const TransactionValidationException(
+          'Transfers require a source and destination account.',
+        );
+      }
+
+      if (sourceAccountId == destinationAccountId) {
+        throw const TransactionValidationException(
+          'Transfers must use different source and destination accounts.',
+        );
+      }
+
+      return;
+    }
+
+    if (transaction.accountId == null || transaction.categoryId == null) {
+      throw const TransactionValidationException(
+        'Income and expense transactions require an account and category.',
+      );
+    }
   }
 }

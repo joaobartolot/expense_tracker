@@ -11,6 +11,7 @@ class TransactionGroup extends StatelessWidget {
     required this.categoryNameFor,
     required this.categoryIconFor,
     required this.accountNameFor,
+    required this.destinationAccountNameFor,
     required this.onTransactionTap,
     required this.onTransactionLongPressStart,
   });
@@ -20,6 +21,7 @@ class TransactionGroup extends StatelessWidget {
   final String Function(TransactionItem transaction) categoryNameFor;
   final IconData Function(TransactionItem transaction) categoryIconFor;
   final String Function(TransactionItem transaction) accountNameFor;
+  final String? Function(TransactionItem transaction) destinationAccountNameFor;
   final ValueChanged<TransactionItem> onTransactionTap;
   final void Function(TransactionItem, LongPressStartDetails)
   onTransactionLongPressStart;
@@ -51,6 +53,7 @@ class TransactionGroup extends StatelessWidget {
                 categoryName: categoryNameFor(transaction),
                 categoryIcon: categoryIconFor(transaction),
                 accountName: accountNameFor(transaction),
+                destinationAccountName: destinationAccountNameFor(transaction),
                 onTap: () => onTransactionTap(transaction),
                 onLongPressStart: (details) =>
                     onTransactionLongPressStart(transaction, details),

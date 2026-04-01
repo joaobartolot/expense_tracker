@@ -51,6 +51,7 @@ class _AppShellState extends State<AppShell> {
       repository: widget.categoryRepository,
       transactionRepository: widget.repository,
     ),
+    // TODO: Replace this placeholder with the real recurring-transactions feature flow.
     const _PlaceholderPage(label: 'Recurring'),
     SettingsPage(repository: widget.settingsRepository),
   ];

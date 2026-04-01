@@ -286,8 +286,17 @@ class HiveStorage {
 
     final migratedTransactions = storedTransactions
         .map((transaction) {
+          final type = TransactionItem.fromMap(transaction).type;
           final existingAccountId = _remapId(
             transaction['accountId'] as String?,
+            accountIdRemap,
+          );
+          final existingSourceAccountId = _remapId(
+            transaction['sourceAccountId'] as String?,
+            accountIdRemap,
+          );
+          final existingDestinationAccountId = _remapId(
+            transaction['destinationAccountId'] as String?,
             accountIdRemap,
           );
           final existingCategoryId = _remapId(
@@ -296,24 +305,47 @@ class HiveStorage {
           );
           final existingTransactionId = transaction['id'] as String?;
           final resolvedTransactionId = _normalizeId(existingTransactionId);
-          if (existingCategoryId != null &&
+          final hasValidTransferAccounts =
+              existingSourceAccountId != null &&
+              existingDestinationAccountId != null &&
+              existingSourceAccountId.isNotEmpty &&
+              existingDestinationAccountId.isNotEmpty &&
+              accountIds.contains(existingSourceAccountId) &&
+              accountIds.contains(existingDestinationAccountId);
+          final hasValidStandardReferences =
+              existingCategoryId != null &&
               existingCategoryId.isNotEmpty &&
               categoryIds.contains(existingCategoryId) &&
               existingAccountId != null &&
               existingAccountId.isNotEmpty &&
-              accountIds.contains(existingAccountId)) {
+              accountIds.contains(existingAccountId);
+
+          if ((type == TransactionType.transfer && hasValidTransferAccounts) ||
+              (type != TransactionType.transfer &&
+                  hasValidStandardReferences)) {
             return {
               'id': resolvedTransactionId,
               'title': transaction['title'],
-              'categoryId': existingCategoryId,
-              'accountId': existingAccountId,
+              'categoryId': type == TransactionType.transfer
+                  ? null
+                  : existingCategoryId,
+              'accountId': type == TransactionType.transfer
+                  ? null
+                  : existingAccountId,
               'amount': transaction['amount'],
               'currencyCode':
                   transaction['currencyCode'] ??
                   accountsById[existingAccountId]?.currencyCode ??
+                  accountsById[existingSourceAccountId]?.currencyCode ??
                   'EUR',
               'date': transaction['date'],
               'type': transaction['type'],
+              'sourceAccountId': type == TransactionType.transfer
+                  ? existingSourceAccountId
+                  : null,
+              'destinationAccountId': type == TransactionType.transfer
+                  ? existingDestinationAccountId
+                  : null,
               'foreignAmount': transaction['foreignAmount'],
               'foreignCurrencyCode': transaction['foreignCurrencyCode'],
               'exchangeRate': transaction['exchangeRate'],
@@ -351,12 +383,24 @@ class HiveStorage {
           final resolvedAccountId = accountIds.contains(existingAccountId)
               ? existingAccountId
               : defaultAccountId;
+          final resolvedSourceAccountId =
+              accountIds.contains(existingSourceAccountId)
+              ? existingSourceAccountId
+              : defaultAccountId;
+          final resolvedDestinationAccountId =
+              accountIds.contains(existingDestinationAccountId)
+              ? existingDestinationAccountId
+              : defaultAccountId;
 
           return {
             'id': resolvedTransactionId,
             'title': transaction['title'],
-            'categoryId': category?.id ?? '',
-            'accountId': resolvedAccountId,
+            'categoryId': type == TransactionType.transfer
+                ? null
+                : category?.id,
+            'accountId': type == TransactionType.transfer
+                ? null
+                : resolvedAccountId,
             'amount': transaction['amount'],
             'currencyCode':
                 transaction['currencyCode'] ??
@@ -364,6 +408,12 @@ class HiveStorage {
                 'EUR',
             'date': transaction['date'],
             'type': transaction['type'],
+            'sourceAccountId': type == TransactionType.transfer
+                ? resolvedSourceAccountId
+                : null,
+            'destinationAccountId': type == TransactionType.transfer
+                ? resolvedDestinationAccountId
+                : null,
             'foreignAmount': transaction['foreignAmount'],
             'foreignCurrencyCode': transaction['foreignCurrencyCode'],
             'exchangeRate': transaction['exchangeRate'],
@@ -380,9 +430,13 @@ class HiveStorage {
 
     final hasLegacyTransactions = storedTransactions.any(
       (transaction) =>
-          transaction['categoryId'] == null ||
+          (((transaction['type'] as String?) ?? '') !=
+                  TransactionType.transfer.name &&
+              transaction['categoryId'] == null) ||
           transaction['subtitle'] != null ||
-          transaction['accountId'] == null ||
+          ((((transaction['type'] as String?) ?? '') !=
+                  TransactionType.transfer.name) &&
+              transaction['accountId'] == null) ||
           transaction['currencyCode'] == null ||
           !_isUuid(transaction['id'] as String?) ||
           categoryIdRemap.containsKey(
@@ -391,7 +445,23 @@ class HiveStorage {
           accountIdRemap.containsKey(
             transaction['accountId'] as String? ?? '',
           ) ||
-          !accountIds.contains(transaction['accountId'] as String? ?? ''),
+          accountIdRemap.containsKey(
+            transaction['sourceAccountId'] as String? ?? '',
+          ) ||
+          accountIdRemap.containsKey(
+            transaction['destinationAccountId'] as String? ?? '',
+          ) ||
+          (((transaction['type'] as String?) ?? '') ==
+                  TransactionType.transfer.name
+              ? !accountIds.contains(
+                      transaction['sourceAccountId'] as String? ?? '',
+                    ) ||
+                    !accountIds.contains(
+                      transaction['destinationAccountId'] as String? ?? '',
+                    )
+              : !accountIds.contains(
+                  transaction['accountId'] as String? ?? '',
+                )),
     );
 
     if (hasLegacyTransactions) {

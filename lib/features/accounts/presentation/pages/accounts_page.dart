@@ -62,7 +62,7 @@ class _AccountsPageState extends State<AccountsPage> {
     }
 
     final hasLinkedTransactions = transactions.any(
-      (transaction) => transaction.accountId == account.id,
+      (transaction) => transaction.linkedAccountIds.contains(account.id),
     );
 
     if (hasLinkedTransactions) {
@@ -197,6 +197,7 @@ class _AccountsPageState extends State<AccountsPage> {
                     accounts: accounts,
                     transactions: transactions,
                   );
+                  // TODO: Convert account balances before aggregating when accounts use different currencies.
                   final totalBalance = effectiveBalances.values.fold<double>(
                     0,
                     (sum, balance) => sum + balance,
@@ -418,12 +419,14 @@ class _AccountsPageState extends State<AccountsPage> {
     };
 
     for (final transaction in transactions) {
-      final accountId = transaction.accountId;
-      if (!balances.containsKey(accountId)) {
-        continue;
-      }
+      for (final entry in transaction.balanceChanges.entries) {
+        final accountId = entry.key;
+        if (!balances.containsKey(accountId)) {
+          continue;
+        }
 
-      balances[accountId] = balances[accountId]! + transaction.signedAmount;
+        balances[accountId] = balances[accountId]! + entry.value;
+      }
     }
 
     return balances;

@@ -10,6 +10,7 @@ class TransactionTile extends StatelessWidget {
     required this.categoryName,
     required this.categoryIcon,
     required this.accountName,
+    this.destinationAccountName,
     this.onTap,
     this.onLongPressStart,
   });
@@ -18,12 +19,23 @@ class TransactionTile extends StatelessWidget {
   final String categoryName;
   final IconData categoryIcon;
   final String accountName;
+  final String? destinationAccountName;
   final VoidCallback? onTap;
   final GestureLongPressStartCallback? onLongPressStart;
 
   @override
   Widget build(BuildContext context) {
     final isIncome = transaction.type == TransactionType.income;
+    final isTransfer = transaction.type == TransactionType.transfer;
+    final amountColor = isTransfer
+        ? AppColors.brandDark
+        : isIncome
+        ? AppColors.income
+        : AppColors.textPrimary;
+    final amountPrefix = isTransfer ? '' : (isIncome ? '+' : '-');
+    final subtitle = isTransfer
+        ? '$accountName -> ${destinationAccountName ?? 'Unknown account'}'
+        : '$categoryName · $accountName';
 
     return Material(
       color: AppColors.surface,
@@ -41,14 +53,20 @@ class TransactionTile extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: isIncome
+                    color: isTransfer
+                        ? AppColors.background
+                        : isIncome
                         ? AppColors.incomeSurface
                         : AppColors.expenseSurface,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
                     categoryIcon,
-                    color: isIncome ? AppColors.income : AppColors.iconMuted,
+                    color: isTransfer
+                        ? AppColors.brandDark
+                        : isIncome
+                        ? AppColors.income
+                        : AppColors.iconMuted,
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -66,7 +84,7 @@ class TransactionTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '$categoryName · $accountName',
+                        subtitle,
                         style: TextStyle(
                           fontSize: 14,
                           color: AppColors.textSecondary,
@@ -77,11 +95,11 @@ class TransactionTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  '${isIncome ? '+' : '-'}${formatCurrency(transaction.amount, currencyCode: transaction.currencyCode)}',
+                  '$amountPrefix${formatCurrency(transaction.amount, currencyCode: transaction.currencyCode)}',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: isIncome ? AppColors.income : AppColors.textPrimary,
+                    color: amountColor,
                   ),
                 ),
               ],

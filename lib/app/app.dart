@@ -40,6 +40,7 @@ class _ExpenseTrackerAppState extends State<ExpenseTrackerApp> {
           title: 'Vero',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
+          // TODO: Read the persisted theme preference from settings instead of forcing light mode.
           // Keep dark palette defined in AppTheme for future re-enable.
           themeMode: ThemeMode.light,
           builder: (context, child) {

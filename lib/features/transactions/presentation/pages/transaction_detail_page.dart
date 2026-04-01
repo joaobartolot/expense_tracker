@@ -145,9 +145,20 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     final account = _accounts
         .where((item) => item.id == transaction.accountId)
         .firstOrNull;
+    final sourceAccount = _accounts
+        .where((item) => item.id == transaction.sourceAccountId)
+        .firstOrNull;
+    final destinationAccount = _accounts
+        .where((item) => item.id == transaction.destinationAccountId)
+        .firstOrNull;
     final isIncome = transaction.type == TransactionType.income;
-    final amountColor = isIncome ? AppColors.income : AppColors.textPrimary;
-    final amountPrefix = isIncome ? '+' : '-';
+    final isTransfer = transaction.type == TransactionType.transfer;
+    final amountColor = isTransfer
+        ? AppColors.brandDark
+        : isIncome
+        ? AppColors.income
+        : AppColors.textPrimary;
+    final amountPrefix = isTransfer ? '' : (isIncome ? '+' : '-');
     final localizations = MaterialLocalizations.of(context);
     final fullDate = localizations.formatFullDate(transaction.date);
     final time = localizations.formatTimeOfDay(
@@ -156,17 +167,28 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     final shortDate = localizations.formatShortDate(transaction.date);
     final categoryName = category?.name ?? 'Unknown category';
     final accountName = account?.name ?? 'Unknown account';
-    final categoryIcon = category?.icon ?? Icons.sell_outlined;
+    final sourceAccountName = sourceAccount?.name ?? 'Unknown account';
+    final destinationAccountName =
+        destinationAccount?.name ?? 'Unknown account';
+    final categoryIcon = isTransfer
+        ? Icons.swap_horiz_rounded
+        : category?.icon ?? Icons.sell_outlined;
     final defaultCurrencyCode = widget.settingsRepository
         .getSettings()
         .defaultCurrencyCode;
     final enteredCurrencyCode =
         transaction.foreignCurrencyCode ?? transaction.currencyCode;
     final enteredAmount = transaction.foreignAmount ?? transaction.amount;
-    final iconBackground = isIncome
+    final iconBackground = isTransfer
+        ? AppColors.background
+        : isIncome
         ? AppColors.incomeSurface
         : AppColors.expenseSurface;
-    final iconColor = isIncome ? AppColors.income : AppColors.iconMuted;
+    final iconColor = isTransfer
+        ? AppColors.brandDark
+        : isIncome
+        ? AppColors.income
+        : AppColors.iconMuted;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -213,7 +235,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       ),
                       const Spacer(),
                       _StatusBadge(
-                        label: isIncome ? 'Income' : 'Expense',
+                        label: isTransfer
+                            ? 'Transfer'
+                            : isIncome
+                            ? 'Income'
+                            : 'Expense',
                         textColor: iconColor,
                         backgroundColor: iconBackground,
                       ),
@@ -253,20 +279,29 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               child: Column(
                 children: [
                   _DetailTile(
-                    icon: Icons.category_outlined,
-                    label: 'Category',
-                    value: categoryName,
-                    onTap: category == null
-                        ? null
-                        : () => _openCategoryDetails(category),
-                  ),
-                  const SizedBox(height: 12),
-                  _DetailTile(
                     icon: Icons.account_balance_wallet_outlined,
-                    label: 'Account',
-                    value: accountName,
+                    label: isTransfer ? 'From account' : 'Account',
+                    value: isTransfer ? sourceAccountName : accountName,
                   ),
                   const SizedBox(height: 12),
+                  if (isTransfer) ...[
+                    _DetailTile(
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: 'To account',
+                      value: destinationAccountName,
+                    ),
+                    const SizedBox(height: 12),
+                  ] else ...[
+                    _DetailTile(
+                      icon: Icons.category_outlined,
+                      label: 'Category',
+                      value: categoryName,
+                      onTap: category == null
+                          ? null
+                          : () => _openCategoryDetails(category),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   _DetailTile(
                     icon: Icons.euro_symbol_rounded,
                     label: transaction.hasForeignCurrency
@@ -277,7 +312,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       currencyCode: transaction.currencyCode,
                     ),
                   ),
-                  if (transaction.hasForeignCurrency) ...[
+                  if (transaction.hasForeignCurrency && !isTransfer) ...[
                     const SizedBox(height: 12),
                     _DetailTile(
                       icon: Icons.currency_exchange_rounded,
@@ -299,7 +334,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   _DetailTile(
                     icon: Icons.swap_vert_rounded,
                     label: 'Type',
-                    value: isIncome ? 'Income' : 'Expense',
+                    value: isTransfer
+                        ? 'Transfer'
+                        : (isIncome ? 'Income' : 'Expense'),
                   ),
                 ],
               ),

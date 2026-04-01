@@ -37,6 +37,7 @@ class CategoryTypeSummaryPage extends StatelessWidget {
         : totalAmount / filteredTransactions.length;
     final activeCategoryIds = filteredTransactions
         .map((transaction) => transaction.categoryId)
+        .whereType<String>()
         .toSet();
 
     return Scaffold(

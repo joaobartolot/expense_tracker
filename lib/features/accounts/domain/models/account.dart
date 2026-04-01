@@ -28,6 +28,7 @@ class Account {
   final CreditCardPaymentTracking? paymentTracking;
 
   bool get isCreditCard => type == AccountType.creditCard;
+  // TODO: Hook credit card due-day and payment-tracking fields into real payment/reminder behavior.
 
   String get typeLabel => switch (type) {
     AccountType.bank => 'Bank account',

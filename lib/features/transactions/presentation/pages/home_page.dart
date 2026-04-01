@@ -214,6 +214,7 @@ class _HomePageState extends State<HomePage> {
       for (final category in _categories) category.id: category,
     };
     final accountsById = {for (final account in _accounts) account.id: account};
+    // TODO: Base this overview on actual account balances so it matches the intended global balance summary.
     final balance = _transactions.fold<double>(
       0,
       (sum, transaction) => sum + transaction.signedAmount,
@@ -279,14 +280,24 @@ class _HomePageState extends State<HomePage> {
               label: entry.key,
               transactions: entry.value,
               categoryNameFor: (transaction) =>
-                  categoriesById[transaction.categoryId]?.name ??
-                  'Unknown category',
+                  transaction.type == TransactionType.transfer
+                  ? 'Transfer'
+                  : categoriesById[transaction.categoryId]?.name ??
+                        'Unknown category',
               categoryIconFor: (transaction) =>
-                  categoriesById[transaction.categoryId]?.icon ??
-                  Icons.sell_outlined,
+                  transaction.type == TransactionType.transfer
+                  ? Icons.swap_horiz_rounded
+                  : categoriesById[transaction.categoryId]?.icon ??
+                        Icons.sell_outlined,
               accountNameFor: (transaction) =>
-                  accountsById[transaction.accountId]?.name ??
+                  accountsById[transaction.accountId ??
+                          transaction.sourceAccountId]
+                      ?.name ??
                   'Unknown account',
+              destinationAccountNameFor: (transaction) =>
+                  transaction.destinationAccountId == null
+                  ? null
+                  : accountsById[transaction.destinationAccountId]?.name,
               onTransactionTap: _openTransactionDetails,
               onTransactionLongPressStart: _showTransactionActionMenu,
             ),
