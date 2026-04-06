@@ -14,11 +14,17 @@ class BalanceOverviewService {
   final TransactionRepository _transactionRepository;
 
   Future<double> getGlobalBalance() async {
-    final effectiveBalances = await getEffectiveBalances();
-    return _sumTrackedBalances(effectiveBalances.values);
+    final overview = await getOverview();
+    return overview.globalBalance;
   }
 
   Future<Map<String, double>> getEffectiveBalances() async {
+    final overview = await getOverview();
+    return overview.effectiveBalances;
+  }
+
+  Future<({double globalBalance, Map<String, double> effectiveBalances})>
+  getOverview() async {
     final results = await Future.wait<dynamic>([
       _accountRepository.getAccounts(),
       _transactionRepository.getTransactions(),
@@ -26,6 +32,21 @@ class BalanceOverviewService {
 
     final accounts = results[0] as List<Account>;
     final transactions = results[1] as List<TransactionItem>;
+    final balances = calculateEffectiveBalances(
+      accounts: accounts,
+      transactions: transactions,
+    );
+
+    return (
+      globalBalance: _sumTrackedBalances(balances.values),
+      effectiveBalances: balances,
+    );
+  }
+
+  Map<String, double> calculateEffectiveBalances({
+    required List<Account> accounts,
+    required List<TransactionItem> transactions,
+  }) {
     final balances = {
       for (final account in accounts) account.id: account.balance,
     };
@@ -42,6 +63,10 @@ class BalanceOverviewService {
     }
 
     return balances;
+  }
+
+  double calculateGlobalBalanceFromBalances(Map<String, double> balances) {
+    return _sumTrackedBalances(balances.values);
   }
 
   double _sumTrackedBalances(Iterable<double> balances) {

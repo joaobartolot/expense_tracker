@@ -1,51 +1,31 @@
+import 'package:expense_tracker/app/state/app_state_provider.dart';
+import 'package:expense_tracker/app/state/app_state_snapshot.dart';
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/date_label_formatter.dart';
 import 'package:expense_tracker/core/widgets/context_action_menu.dart';
-import 'package:expense_tracker/features/accounts/data/account_repository.dart';
-import 'package:expense_tracker/features/accounts/domain/models/account.dart';
-import 'package:expense_tracker/features/categories/data/category_repository.dart';
-import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
-import 'package:expense_tracker/features/settings/data/settings_repository.dart';
-import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:expense_tracker/features/transactions/presentation/pages/add_transaction_page.dart';
 import 'package:expense_tracker/features/transactions/presentation/pages/transaction_detail_page.dart';
 import 'package:expense_tracker/features/transactions/presentation/widgets/transaction_group.dart';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
-
-enum _HistorySort { newestFirst, oldestFirst }
-
-enum _HistoryFilter { all, income, expense, transfer }
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum _HistoryTransactionAction { edit, delete }
 
-class TransactionHistoryPage extends StatefulWidget {
-  const TransactionHistoryPage({
-    super.key,
-    required this.repository,
-    required this.categoryRepository,
-    required this.settingsRepository,
-    required this.accountRepository,
-  });
-
-  final TransactionRepository repository;
-  final CategoryRepository categoryRepository;
-  final SettingsRepository settingsRepository;
-  final AccountRepository accountRepository;
+class TransactionHistoryPage extends ConsumerStatefulWidget {
+  const TransactionHistoryPage({super.key});
 
   @override
-  State<TransactionHistoryPage> createState() => _TransactionHistoryPageState();
+  ConsumerState<TransactionHistoryPage> createState() =>
+      _TransactionHistoryPageState();
 }
 
-class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
+class _TransactionHistoryPageState
+    extends ConsumerState<TransactionHistoryPage> {
   static const int _pageSize = 20;
 
-  _HistorySort _sort = _HistorySort.newestFirst;
-  _HistoryFilter _filter = _HistoryFilter.all;
   late final TextEditingController _searchController;
   late final ScrollController _scrollController;
-  String _searchQuery = '';
   int _visibleCount = _pageSize;
   bool _isLoadingMore = false;
   bool _hasMoreAvailable = false;
@@ -53,7 +33,8 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   @override
   void initState() {
     super.initState();
-    _searchController = TextEditingController();
+    final initialQuery = ref.read(appStateProvider).historySearchQuery;
+    _searchController = TextEditingController(text: initialQuery);
     _scrollController = ScrollController()..addListener(_onScroll);
   }
 
@@ -69,13 +50,8 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   Future<void> _openTransactionDetails(TransactionItem transaction) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => TransactionDetailPage(
-          transaction: transaction,
-          repository: widget.repository,
-          categoryRepository: widget.categoryRepository,
-          accountRepository: widget.accountRepository,
-          settingsRepository: widget.settingsRepository,
-        ),
+        builder: (context) =>
+            TransactionDetailPage(transactionId: transaction.id),
       ),
     );
   }
@@ -83,18 +59,14 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   Future<void> _editTransaction(TransactionItem transaction) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => AddTransactionPage(
-          repository: widget.repository,
-          categoryRepository: widget.categoryRepository,
-          accountRepository: widget.accountRepository,
-          settingsRepository: widget.settingsRepository,
-          initialTransaction: transaction,
-        ),
+        builder: (context) =>
+            AddTransactionPage(initialTransaction: transaction),
       ),
     );
   }
 
   Future<void> _deleteTransaction(TransactionItem transaction) async {
+    final notifier = ref.read(appStateProvider.notifier);
     final didConfirm = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -125,7 +97,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
       return;
     }
 
-    await widget.repository.deleteTransaction(transaction.id);
+    await notifier.deleteTransaction(transaction.id);
   }
 
   Future<void> _showTransactionActionMenu(
@@ -168,7 +140,9 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   }
 
   Future<void> _showSortPicker() async {
-    final selectedSort = await showModalBottomSheet<_HistorySort>(
+    final notifier = ref.read(appStateProvider.notifier);
+    final currentSort = ref.read(appStateProvider).historySort;
+    final selectedSort = await showModalBottomSheet<TransactionHistorySort>(
       context: context,
       builder: (context) {
         return SafeArea(
@@ -178,20 +152,22 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
               ListTile(
                 leading: const Icon(Icons.schedule_outlined),
                 title: const Text('Newest first'),
-                trailing: _sort == _HistorySort.newestFirst
+                trailing: currentSort == TransactionHistorySort.newestFirst
                     ? const Icon(Icons.check_rounded)
                     : null,
-                onTap: () =>
-                    Navigator.of(context).pop(_HistorySort.newestFirst),
+                onTap: () => Navigator.of(
+                  context,
+                ).pop(TransactionHistorySort.newestFirst),
               ),
               ListTile(
                 leading: const Icon(Icons.history_toggle_off_rounded),
                 title: const Text('Oldest first'),
-                trailing: _sort == _HistorySort.oldestFirst
+                trailing: currentSort == TransactionHistorySort.oldestFirst
                     ? const Icon(Icons.check_rounded)
                     : null,
-                onTap: () =>
-                    Navigator.of(context).pop(_HistorySort.oldestFirst),
+                onTap: () => Navigator.of(
+                  context,
+                ).pop(TransactionHistorySort.oldestFirst),
               ),
             ],
           ),
@@ -204,13 +180,15 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
     }
 
     setState(() {
-      _sort = selectedSort;
       _visibleCount = _pageSize;
     });
+    notifier.updateHistorySort(selectedSort);
   }
 
   Future<void> _showFilterPicker() async {
-    final selectedFilter = await showModalBottomSheet<_HistoryFilter>(
+    final notifier = ref.read(appStateProvider.notifier);
+    final currentFilter = ref.read(appStateProvider).historyFilter;
+    final selectedFilter = await showModalBottomSheet<TransactionHistoryFilter>(
       context: context,
       builder: (context) {
         return SafeArea(
@@ -220,26 +198,31 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
               _FilterOptionTile(
                 label: 'All transactions',
                 icon: Icons.apps_rounded,
-                isSelected: _filter == _HistoryFilter.all,
-                onTap: () => Navigator.of(context).pop(_HistoryFilter.all),
+                isSelected: currentFilter == TransactionHistoryFilter.all,
+                onTap: () =>
+                    Navigator.of(context).pop(TransactionHistoryFilter.all),
               ),
               _FilterOptionTile(
                 label: 'Income',
                 icon: Icons.south_west_rounded,
-                isSelected: _filter == _HistoryFilter.income,
-                onTap: () => Navigator.of(context).pop(_HistoryFilter.income),
+                isSelected: currentFilter == TransactionHistoryFilter.income,
+                onTap: () =>
+                    Navigator.of(context).pop(TransactionHistoryFilter.income),
               ),
               _FilterOptionTile(
                 label: 'Expenses',
                 icon: Icons.north_east_rounded,
-                isSelected: _filter == _HistoryFilter.expense,
-                onTap: () => Navigator.of(context).pop(_HistoryFilter.expense),
+                isSelected: currentFilter == TransactionHistoryFilter.expense,
+                onTap: () =>
+                    Navigator.of(context).pop(TransactionHistoryFilter.expense),
               ),
               _FilterOptionTile(
                 label: 'Transfers',
                 icon: Icons.swap_horiz_rounded,
-                isSelected: _filter == _HistoryFilter.transfer,
-                onTap: () => Navigator.of(context).pop(_HistoryFilter.transfer),
+                isSelected: currentFilter == TransactionHistoryFilter.transfer,
+                onTap: () => Navigator.of(
+                  context,
+                ).pop(TransactionHistoryFilter.transfer),
               ),
             ],
           ),
@@ -252,9 +235,9 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
     }
 
     setState(() {
-      _filter = selectedFilter;
       _visibleCount = _pageSize;
     });
+    notifier.updateHistoryFilter(selectedFilter);
   }
 
   void _onScroll() {
@@ -291,9 +274,46 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
     });
   }
 
+  Map<String, List<TransactionItem>> _groupTransactions(
+    List<TransactionItem> transactions,
+  ) {
+    final grouped = <String, List<TransactionItem>>{};
+
+    for (final transaction in transactions) {
+      final label = formatDateLabel(transaction.date);
+      grouped.putIfAbsent(label, () => []).add(transaction);
+    }
+
+    return grouped;
+  }
+
+  String _emptyLabel(AppStateSnapshot state) {
+    if (state.historySearchQuery.isNotEmpty) {
+      return 'No transactions match your search.';
+    }
+
+    return switch (state.historyFilter) {
+      TransactionHistoryFilter.all => 'No transactions yet.',
+      TransactionHistoryFilter.income =>
+        'No income transactions match this filter.',
+      TransactionHistoryFilter.expense =>
+        'No expense transactions match this filter.',
+      TransactionHistoryFilter.transfer =>
+        'No transfer transactions match this filter.',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(appStateProvider);
     final theme = Theme.of(context);
+    final filteredTransactions = state.historyTransactions;
+    final visibleTransactions = filteredTransactions
+        .take(_visibleCount.clamp(0, filteredTransactions.length))
+        .toList(growable: false);
+    final groupedTransactions = _groupTransactions(visibleTransactions);
+    final hasMore = visibleTransactions.length < filteredTransactions.length;
+    _hasMoreAvailable = hasMore;
 
     return Scaffold(
       appBar: AppBar(
@@ -311,245 +331,108 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
           ),
         ],
       ),
-      body: ValueListenableBuilder<Box<dynamic>>(
-        valueListenable: widget.repository.listenable(),
-        builder: (context, transactionValue, child) {
-          return FutureBuilder<_TransactionHistoryData>(
-            future: _loadPageData(),
-            builder: (context, snapshot) {
-              final pageData =
-                  snapshot.data ?? const _TransactionHistoryData.empty();
-              final categoriesById = {
-                for (final category in pageData.categories)
-                  category.id: category,
-              };
-              final accountsById = {
-                for (final account in pageData.accounts) account.id: account,
-              };
-              final filteredTransactions = _applySortAndFilter(
-                transactions: pageData.transactions,
-                categoriesById: categoriesById,
-                accountsById: accountsById,
-              );
-              final visibleTransactions = filteredTransactions
-                  .take(_visibleCount.clamp(0, filteredTransactions.length))
-                  .toList(growable: false);
-              final groupedTransactions = _groupTransactions(
-                visibleTransactions,
-              );
-              final hasMore =
-                  visibleTransactions.length < filteredTransactions.length;
-              _hasMoreAvailable = hasMore;
+      body: Builder(
+        builder: (context) {
+          if (!state.hasLoaded && state.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-              if (snapshot.connectionState == ConnectionState.waiting &&
-                  pageData.transactions.isEmpty) {
-                return const Center(child: CircularProgressIndicator());
-              }
+          if (groupedTransactions.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  _emptyLabel(state),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            );
+          }
 
-              if (groupedTransactions.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(
-                      _emptyLabel,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                );
-              }
-
-              return ListView(
-                controller: _scrollController,
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-                children: [
-                  TextField(
-                    controller: _searchController,
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value.trim().toLowerCase();
-                        _visibleCount = _pageSize;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Search transactions',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: _searchQuery.isEmpty
-                          ? null
-                          : IconButton(
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {
-                                  _searchQuery = '';
-                                  _visibleCount = _pageSize;
-                                });
-                              },
-                              icon: const Icon(Icons.close_rounded),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  ...groupedTransactions.entries.map(
-                    (entry) => TransactionGroup(
-                      label: entry.key,
-                      transactions: entry.value,
-                      categoryNameFor: (transaction) =>
-                          transaction.type == TransactionType.transfer
-                          ? 'Transfer'
-                          : categoriesById[transaction.categoryId]?.name ??
-                                'Unknown category',
-                      categoryIconFor: (transaction) =>
-                          transaction.type == TransactionType.transfer
-                          ? Icons.swap_horiz_rounded
-                          : categoriesById[transaction.categoryId]?.icon ??
-                                Icons.sell_outlined,
-                      accountNameFor: (transaction) =>
-                          accountsById[transaction.accountId ??
-                                  transaction.sourceAccountId]
-                              ?.name ??
-                          'Unknown account',
-                      destinationAccountNameFor: (transaction) =>
-                          transaction.destinationAccountId == null
-                          ? null
-                          : accountsById[transaction.destinationAccountId]
-                                ?.name,
-                      onTransactionTap: _openTransactionDetails,
-                      onTransactionLongPressStart: _showTransactionActionMenu,
-                    ),
-                  ),
-                  if (_isLoadingMore)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 8, bottom: 12),
-                      child: Center(
-                        child: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2.4),
+          return ListView(
+            controller: _scrollController,
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+            children: [
+              TextField(
+                controller: _searchController,
+                onChanged: (value) {
+                  setState(() {
+                    _visibleCount = _pageSize;
+                  });
+                  ref
+                      .read(appStateProvider.notifier)
+                      .updateHistorySearchQuery(value);
+                },
+                decoration: InputDecoration(
+                  hintText: 'Search transactions',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: state.historySearchQuery.isEmpty
+                      ? null
+                      : IconButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _visibleCount = _pageSize;
+                            });
+                            ref
+                                .read(appStateProvider.notifier)
+                                .updateHistorySearchQuery('');
+                          },
+                          icon: const Icon(Icons.close_rounded),
                         ),
-                      ),
-                    )
-                  else if (hasMore)
-                    const SizedBox(height: 24),
-                ],
-              );
-            },
+                ),
+              ),
+              const SizedBox(height: 20),
+              ...groupedTransactions.entries.map(
+                (entry) => TransactionGroup(
+                  label: entry.key,
+                  transactions: entry.value,
+                  categoryNameFor: (transaction) =>
+                      transaction.type == TransactionType.transfer
+                      ? 'Transfer'
+                      : state.categoryById(transaction.categoryId)?.name ??
+                            'Unknown category',
+                  categoryIconFor: (transaction) =>
+                      transaction.type == TransactionType.transfer
+                      ? Icons.swap_horiz_rounded
+                      : state.categoryById(transaction.categoryId)?.icon ??
+                            Icons.sell_outlined,
+                  accountNameFor: (transaction) =>
+                      state
+                          .accountById(
+                            transaction.accountId ??
+                                transaction.sourceAccountId,
+                          )
+                          ?.name ??
+                      'Unknown account',
+                  destinationAccountNameFor: (transaction) =>
+                      state.accountById(transaction.destinationAccountId)?.name,
+                  onTransactionTap: _openTransactionDetails,
+                  onTransactionLongPressStart: _showTransactionActionMenu,
+                ),
+              ),
+              if (_isLoadingMore)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8, bottom: 12),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2.4),
+                    ),
+                  ),
+                )
+              else if (hasMore)
+                const SizedBox(height: 24),
+            ],
           );
         },
       ),
     );
   }
-
-  Future<_TransactionHistoryData> _loadPageData() async {
-    final results = await Future.wait<dynamic>([
-      widget.repository.getTransactions(),
-      widget.categoryRepository.getCategories(),
-      widget.accountRepository.getAccounts(),
-    ]);
-
-    return _TransactionHistoryData(
-      transactions: results[0] as List<TransactionItem>,
-      categories: results[1] as List<CategoryItem>,
-      accounts: results[2] as List<Account>,
-    );
-  }
-
-  List<TransactionItem> _applySortAndFilter({
-    required List<TransactionItem> transactions,
-    required Map<String, CategoryItem> categoriesById,
-    required Map<String, Account> accountsById,
-  }) {
-    final filtered = transactions
-        .where((transaction) {
-          final matchesFilter = switch (_filter) {
-            _HistoryFilter.all => true,
-            _HistoryFilter.income => transaction.type == TransactionType.income,
-            _HistoryFilter.expense =>
-              transaction.type == TransactionType.expense,
-            _HistoryFilter.transfer =>
-              transaction.type == TransactionType.transfer,
-          };
-
-          if (!matchesFilter) {
-            return false;
-          }
-
-          if (_searchQuery.isEmpty) {
-            return true;
-          }
-
-          final category = categoriesById[transaction.categoryId];
-          final account =
-              accountsById[transaction.accountId ??
-                  transaction.sourceAccountId];
-          final destinationAccount =
-              accountsById[transaction.destinationAccountId];
-          final searchableText = [
-            transaction.title,
-            category?.name,
-            category?.description,
-            account?.name,
-            account?.description,
-            destinationAccount?.name,
-            destinationAccount?.description,
-          ].whereType<String>().join(' ').toLowerCase();
-
-          return searchableText.contains(_searchQuery);
-        })
-        .toList(growable: false);
-
-    final sorted = [...filtered]
-      ..sort((a, b) {
-        final comparison = a.date.compareTo(b.date);
-        return _sort == _HistorySort.oldestFirst ? comparison : -comparison;
-      });
-
-    return sorted;
-  }
-
-  Map<String, List<TransactionItem>> _groupTransactions(
-    List<TransactionItem> transactions,
-  ) {
-    final grouped = <String, List<TransactionItem>>{};
-
-    for (final transaction in transactions) {
-      final label = formatDateLabel(transaction.date);
-      grouped.putIfAbsent(label, () => []).add(transaction);
-    }
-
-    return grouped;
-  }
-
-  String get _emptyLabel {
-    if (_searchQuery.isNotEmpty) {
-      return 'No transactions match your search.';
-    }
-
-    return switch (_filter) {
-      _HistoryFilter.all => 'No transactions yet.',
-      _HistoryFilter.income => 'No income transactions match this filter.',
-      _HistoryFilter.expense => 'No expense transactions match this filter.',
-      _HistoryFilter.transfer => 'No transfer transactions match this filter.',
-    };
-  }
-}
-
-class _TransactionHistoryData {
-  const _TransactionHistoryData({
-    required this.transactions,
-    required this.categories,
-    required this.accounts,
-  });
-
-  const _TransactionHistoryData.empty()
-    : transactions = const [],
-      categories = const [],
-      accounts = const [];
-
-  final List<TransactionItem> transactions;
-  final List<CategoryItem> categories;
-  final List<Account> accounts;
 }
 
 class _FilterOptionTile extends StatelessWidget {

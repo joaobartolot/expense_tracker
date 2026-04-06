@@ -1,85 +1,41 @@
+import 'package:expense_tracker/app/state/app_state_provider.dart';
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/currency_formatter.dart';
-import 'package:expense_tracker/features/accounts/data/account_repository.dart';
-import 'package:expense_tracker/features/accounts/domain/models/account.dart';
-import 'package:expense_tracker/features/categories/data/category_repository.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
 import 'package:expense_tracker/features/categories/presentation/pages/category_detail_page.dart';
-import 'package:expense_tracker/features/settings/data/settings_repository.dart';
-import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:expense_tracker/features/transactions/presentation/pages/add_transaction_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class TransactionDetailPage extends StatefulWidget {
-  const TransactionDetailPage({
-    super.key,
-    required this.transaction,
-    required this.repository,
-    required this.categoryRepository,
-    required this.accountRepository,
-    required this.settingsRepository,
-  });
+class TransactionDetailPage extends ConsumerWidget {
+  const TransactionDetailPage({super.key, required this.transactionId});
 
-  final TransactionItem transaction;
-  final TransactionRepository repository;
-  final CategoryRepository categoryRepository;
-  final AccountRepository accountRepository;
-  final SettingsRepository settingsRepository;
+  final String transactionId;
 
-  @override
-  State<TransactionDetailPage> createState() => _TransactionDetailPageState();
-}
-
-class _TransactionDetailPageState extends State<TransactionDetailPage> {
-  List<CategoryItem> _categories = const [];
-  List<Account> _accounts = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    final accounts = await widget.accountRepository.getAccounts();
-    final categories = await widget.categoryRepository.getCategories();
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _accounts = accounts;
-      _categories = categories;
-    });
-  }
-
-  Future<void> _editTransaction() async {
+  Future<void> _editTransaction(
+    BuildContext context,
+    TransactionItem transaction,
+  ) async {
     final didChange = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => AddTransactionPage(
-          repository: widget.repository,
-          categoryRepository: widget.categoryRepository,
-          accountRepository: widget.accountRepository,
-          settingsRepository: widget.settingsRepository,
-          initialTransaction: widget.transaction,
-        ),
+        builder: (context) =>
+            AddTransactionPage(initialTransaction: transaction),
       ),
     );
 
-    if (didChange != true) {
-      return;
-    }
-
-    if (!mounted) {
+    if (didChange != true || !context.mounted) {
       return;
     }
 
     Navigator.of(context).pop(true);
   }
 
-  Future<void> _deleteTransaction() async {
+  Future<void> _deleteTransaction(
+    BuildContext context,
+    WidgetRef ref,
+    TransactionItem transaction,
+  ) async {
     final didConfirm = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -106,51 +62,51 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       },
     );
 
-    if (didConfirm != true) {
+    if (didConfirm != true || !context.mounted) {
       return;
     }
 
-    await widget.repository.deleteTransaction(widget.transaction.id);
+    await ref.read(appStateProvider.notifier).deleteTransaction(transaction.id);
 
-    if (!mounted) {
+    if (!context.mounted) {
       return;
     }
 
     Navigator.of(context).pop(true);
   }
 
-  Future<void> _openCategoryDetails(CategoryItem category) async {
-    final shouldReload = await Navigator.of(context).push<bool>(
+  Future<void> _openCategoryDetails(
+    BuildContext context,
+    CategoryItem category,
+  ) async {
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => CategoryDetailPage(
-          category: category,
-          categoryRepository: widget.categoryRepository,
-          transactionRepository: widget.repository,
-        ),
+        builder: (context) => CategoryDetailPage(categoryId: category.id),
       ),
     );
-
-    if (shouldReload == true) {
-      await _loadData();
-    }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(appStateProvider);
+    final transaction = state.transactions
+        .where((item) => item.id == transactionId)
+        .firstOrNull;
+
+    if (transaction == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Transaction details')),
+        body: const Center(child: Text('This transaction no longer exists.')),
+      );
+    }
+
     final theme = Theme.of(context);
-    final transaction = widget.transaction;
-    final category = _categories
-        .where((item) => item.id == transaction.categoryId)
-        .firstOrNull;
-    final account = _accounts
-        .where((item) => item.id == transaction.accountId)
-        .firstOrNull;
-    final sourceAccount = _accounts
-        .where((item) => item.id == transaction.sourceAccountId)
-        .firstOrNull;
-    final destinationAccount = _accounts
-        .where((item) => item.id == transaction.destinationAccountId)
-        .firstOrNull;
+    final category = state.categoryById(transaction.categoryId);
+    final account = state.accountById(transaction.accountId);
+    final sourceAccount = state.accountById(transaction.sourceAccountId);
+    final destinationAccount = state.accountById(
+      transaction.destinationAccountId,
+    );
     final isIncome = transaction.type == TransactionType.income;
     final isTransfer = transaction.type == TransactionType.transfer;
     final amountColor = isTransfer
@@ -173,9 +129,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     final categoryIcon = isTransfer
         ? Icons.swap_horiz_rounded
         : category?.icon ?? Icons.sell_outlined;
-    final defaultCurrencyCode = widget.settingsRepository
-        .getSettings()
-        .defaultCurrencyCode;
+    final defaultCurrencyCode = state.settings.defaultCurrencyCode;
     final enteredCurrencyCode =
         transaction.foreignCurrencyCode ?? transaction.currencyCode;
     final enteredAmount = transaction.foreignAmount ?? transaction.amount;
@@ -263,13 +217,22 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       letterSpacing: -0.6,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '$shortDate at $time',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: AppColors.textSecondary,
+                  if (transaction.hasForeignCurrency) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Entered as ${formatCurrency(enteredAmount, currencyCode: enteredCurrencyCode)}',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Converted to $defaultCurrencyCode at ${transaction.exchangeRate?.toStringAsFixed(4) ?? 'n/a'}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -278,133 +241,81 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               title: 'Overview',
               child: Column(
                 children: [
-                  _DetailTile(
-                    icon: Icons.account_balance_wallet_outlined,
-                    label: isTransfer ? 'From account' : 'Account',
-                    value: isTransfer ? sourceAccountName : accountName,
-                  ),
-                  const SizedBox(height: 12),
-                  if (isTransfer) ...[
-                    _DetailTile(
-                      icon: Icons.account_balance_wallet_outlined,
-                      label: 'To account',
-                      value: destinationAccountName,
-                    ),
-                    const SizedBox(height: 12),
-                  ] else ...[
-                    _DetailTile(
-                      icon: Icons.category_outlined,
+                  if (!isTransfer) ...[
+                    _ActionDetailTile(
+                      icon: categoryIcon,
                       label: 'Category',
                       value: categoryName,
                       onTap: category == null
                           ? null
-                          : () => _openCategoryDetails(category),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  _DetailTile(
-                    icon: Icons.euro_symbol_rounded,
-                    label: transaction.hasForeignCurrency
-                        ? 'Saved amount'
-                        : 'Amount',
-                    value: formatCurrency(
-                      transaction.amount,
-                      currencyCode: transaction.currencyCode,
-                    ),
-                  ),
-                  if (transaction.hasForeignCurrency && !isTransfer) ...[
-                    const SizedBox(height: 12),
-                    _DetailTile(
-                      icon: Icons.currency_exchange_rounded,
-                      label: 'Entered amount',
-                      value: formatCurrency(
-                        enteredAmount,
-                        currencyCode: enteredCurrencyCode,
-                      ),
+                          : () => _openCategoryDetails(context, category),
                     ),
                     const SizedBox(height: 12),
                     _DetailTile(
-                      icon: Icons.sync_alt_rounded,
-                      label: 'Exchange rate',
-                      value:
-                          '1 ${enteredCurrencyCode.toUpperCase()} = ${formatCurrency(transaction.exchangeRate ?? 0, currencyCode: defaultCurrencyCode)}',
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: 'Account',
+                      value: accountName,
+                    ),
+                  ] else ...[
+                    _DetailTile(
+                      icon: Icons.arrow_upward_rounded,
+                      label: 'From account',
+                      value: sourceAccountName,
+                    ),
+                    const SizedBox(height: 12),
+                    _DetailTile(
+                      icon: Icons.arrow_downward_rounded,
+                      label: 'To account',
+                      value: destinationAccountName,
                     ),
                   ],
                   const SizedBox(height: 12),
                   _DetailTile(
-                    icon: Icons.swap_vert_rounded,
-                    label: 'Type',
-                    value: isTransfer
-                        ? 'Transfer'
-                        : (isIncome ? 'Income' : 'Expense'),
+                    icon: Icons.event_outlined,
+                    label: 'Date',
+                    value: shortDate,
+                  ),
+                  const SizedBox(height: 12),
+                  _DetailTile(
+                    icon: Icons.schedule_outlined,
+                    label: 'Time',
+                    value: time,
+                  ),
+                  const SizedBox(height: 12),
+                  _DetailTile(
+                    icon: Icons.calendar_today_outlined,
+                    label: 'Full date',
+                    value: fullDate,
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-            _SectionCard(
-              title: 'When it happened',
-              child: Column(
-                children: [
-                  _DetailTile(
-                    icon: Icons.calendar_today_outlined,
-                    label: 'Date',
-                    value: fullDate,
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _editTransaction(context, transaction),
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Edit'),
                   ),
-                  const SizedBox(height: 12),
-                  _DetailTile(
-                    icon: Icons.schedule_rounded,
-                    label: 'Time',
-                    value: time,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () =>
+                        _deleteTransaction(context, ref, transaction),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.danger,
+                      foregroundColor: AppColors.white,
+                    ),
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Delete'),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
-        ),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-        decoration: const BoxDecoration(
-          color: Color(0xCCF4F7F5),
-          border: Border(top: BorderSide(color: Color(0xFFE2E8E4))),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _deleteTransaction,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(56),
-                    foregroundColor: AppColors.dangerDark,
-                    side: const BorderSide(color: Color(0xFFF2B8B5)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                  ),
-                  child: const Text('Delete'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: FilledButton(
-                  onPressed: _editTransaction,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.brand,
-                    foregroundColor: AppColors.white,
-                    minimumSize: const Size.fromHeight(56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                  ),
-                  child: const Text('Edit transaction'),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -451,6 +362,66 @@ class _DetailTile extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FBFA),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: AppColors.iconMuted, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionDetailTile extends StatelessWidget {
+  const _ActionDetailTile({
+    required this.icon,
+    required this.label,
+    required this.value,
     this.onTap,
   });
 
@@ -461,63 +432,15 @@ class _DetailTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final content = Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Icon(icon, size: 18, color: AppColors.brandDark),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (onTap != null) ...[
-          const SizedBox(width: 12),
-          Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
-        ],
-      ],
-    );
+    final child = _DetailTile(icon: icon, label: label, value: value);
+    if (onTap == null) {
+      return child;
+    }
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF9FBFA),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: content,
-        ),
-      ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: child,
     );
   }
 }
@@ -547,7 +470,7 @@ class _StatusBadge extends StatelessWidget {
         label,
         style: theme.textTheme.labelLarge?.copyWith(
           color: textColor,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

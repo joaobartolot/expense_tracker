@@ -211,6 +211,24 @@ Data Sources
 * Repository implementations
 * Data sources
 
+### Shared State Principle
+
+Shared application state must have a single source of truth.
+
+That means:
+
+* UI renders current state and sends user actions
+* State coordinates shared data, derived values, and cross-screen consistency
+* Repositories remain the abstraction over persistence
+* Data sources remain responsible for storage access
+
+Guidelines:
+
+* Shared or derived state must not live inside widgets
+* Widgets may keep ephemeral UI state such as focus, local input drafts, and temporary view toggles
+* Values such as balances, summaries, filters, and selected periods should be derived in one place and reused across screens
+* Different screens should not maintain separate copies of the same shared data
+
 ---
 
 ## 📁 Project Structure

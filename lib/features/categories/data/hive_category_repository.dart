@@ -2,7 +2,8 @@ import 'package:expense_tracker/core/logging/scoped_log_printer.dart';
 import 'package:expense_tracker/core/storage/hive_storage.dart';
 import 'package:expense_tracker/features/categories/data/category_repository.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
-import 'package:hive/hive.dart';
+import 'package:flutter/foundation.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:logger/logger.dart';
 
 final _logger = Logger(printer: ScopedLogPrinter('categories_repository'));
@@ -11,6 +12,11 @@ class HiveCategoryRepository implements CategoryRepository {
   HiveCategoryRepository() : _box = Hive.box(HiveStorage.categoriesBoxName);
 
   final Box<dynamic> _box;
+
+  @override
+  ValueListenable<Box<dynamic>> listenable() {
+    return _box.listenable(keys: [HiveStorage.categoriesKey]);
+  }
 
   @override
   Future<List<CategoryItem>> getCategories() async {
@@ -94,6 +100,19 @@ class HiveCategoryRepository implements CategoryRepository {
         (_box.get(HiveStorage.categoriesKey) as List<dynamic>? ?? const [])
             .cast<Map<dynamic, dynamic>>();
 
-    return storedCategories.map(CategoryItem.fromMap).toList();
+    final categories = <CategoryItem>[];
+    for (final map in storedCategories) {
+      try {
+        categories.add(CategoryItem.fromMap(map));
+      } catch (error, stackTrace) {
+        _logger.w(
+          'Skipped invalid stored category entry.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
+
+    return categories;
   }
 }

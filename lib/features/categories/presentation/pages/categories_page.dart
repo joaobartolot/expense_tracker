@@ -1,146 +1,79 @@
+import 'package:expense_tracker/app/state/app_state_provider.dart';
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/widgets/context_action_menu.dart';
-import 'package:expense_tracker/features/categories/data/category_repository.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
 import 'package:expense_tracker/features/categories/presentation/pages/add_category_page.dart';
 import 'package:expense_tracker/features/categories/presentation/pages/category_detail_page.dart';
 import 'package:expense_tracker/features/categories/presentation/pages/category_type_summary_page.dart';
 import 'package:expense_tracker/features/categories/presentation/widgets/category_section.dart';
-import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
-import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum _CategoryListAction { edit, delete }
 
-class CategoriesPage extends StatefulWidget {
-  const CategoriesPage({
-    super.key,
-    required this.repository,
-    required this.transactionRepository,
-  });
+class CategoriesPage extends ConsumerWidget {
+  const CategoriesPage({super.key});
 
-  final CategoryRepository repository;
-  final TransactionRepository transactionRepository;
-
-  @override
-  State<CategoriesPage> createState() => _CategoriesPageState();
-}
-
-class _CategoriesPageState extends State<CategoriesPage> {
   static const double _floatingNavClearance = 128;
 
-  List<CategoryItem> _categories = const [];
-  List<TransactionItem> _transactions = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCategories();
-  }
-
-  Future<void> _loadCategories() async {
-    final categories = await widget.repository.getCategories();
-    final transactions = await widget.transactionRepository.getTransactions();
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _categories = categories;
-      _transactions = transactions;
-    });
-  }
-
-  Future<void> _addCategory() async {
+  Future<void> _addCategory(BuildContext context, WidgetRef ref) async {
     final category = await Navigator.of(context).push<CategoryItem>(
       MaterialPageRoute(builder: (context) => const AddCategoryPage()),
     );
 
-    if (category == null) {
+    if (category == null || !context.mounted) {
       return;
     }
 
-    await widget.repository.addCategory(category);
-    if (!mounted) {
-      return;
-    }
-    await _loadCategories();
+    await ref
+        .read(appStateProvider.notifier)
+        .saveCategory(category, isEditing: false);
   }
 
-  Future<void> _openCategoryDetails(CategoryItem category) async {
-    final shouldReload = await Navigator.of(context).push<bool>(
+  Future<void> _openCategoryDetails(
+    BuildContext context,
+    CategoryItem category,
+  ) async {
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => CategoryDetailPage(
-          category: category,
-          categoryRepository: widget.repository,
-          transactionRepository: widget.transactionRepository,
-        ),
+        builder: (context) => CategoryDetailPage(categoryId: category.id),
       ),
     );
-
-    if (shouldReload == true) {
-      await _loadCategories();
-    }
   }
 
-  Future<void> _openTypeSummary(CategoryType type) async {
-    final categories = _categories
-        .where((category) => category.type == type)
-        .toList(growable: false);
-
+  Future<void> _openTypeSummary(BuildContext context, CategoryType type) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (context) => CategoryTypeSummaryPage(
-          type: type,
-          categories: categories,
-          transactions: _transactions,
-        ),
+        builder: (context) => CategoryTypeSummaryPage(type: type),
       ),
     );
   }
 
-  Future<void> _editCategory(CategoryItem category) async {
+  Future<void> _editCategory(
+    BuildContext context,
+    WidgetRef ref,
+    CategoryItem category,
+  ) async {
     final updatedCategory = await Navigator.of(context).push<CategoryItem>(
       MaterialPageRoute(
         builder: (context) => AddCategoryPage(initialCategory: category),
       ),
     );
 
-    if (updatedCategory == null) {
+    if (updatedCategory == null || !context.mounted) {
       return;
     }
 
-    await widget.repository.updateCategory(updatedCategory);
-    await _loadCategories();
+    await ref
+        .read(appStateProvider.notifier)
+        .saveCategory(updatedCategory, isEditing: true);
   }
 
-  Future<void> _deleteCategory(CategoryItem category) async {
-    final hasLinkedTransactions = _transactions.any(
-      (transaction) => transaction.categoryId == category.id,
-    );
-
-    if (hasLinkedTransactions) {
-      await showDialog<void>(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Category in use'),
-            content: const Text(
-              'Move or delete the related transactions before removing this category.',
-            ),
-            actions: [
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
-      return;
-    }
-
+  Future<void> _deleteCategory(
+    BuildContext context,
+    WidgetRef ref,
+    CategoryItem category,
+  ) async {
     final didConfirm = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -165,15 +98,38 @@ class _CategoriesPageState extends State<CategoriesPage> {
       },
     );
 
-    if (didConfirm != true) {
+    if (didConfirm != true || !context.mounted) {
       return;
     }
 
-    await widget.repository.deleteCategory(category.id);
-    await _loadCategories();
+    try {
+      await ref.read(appStateProvider.notifier).deleteCategory(category);
+    } on LinkedEntityException catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Category in use'),
+            content: Text(error.message),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 
   Future<void> _showCategoryActionMenu(
+    BuildContext context,
+    WidgetRef ref,
     CategoryItem category,
     LongPressStartDetails details,
   ) async {
@@ -195,16 +151,16 @@ class _CategoriesPageState extends State<CategoriesPage> {
       ],
     );
 
-    if (!mounted) {
+    if (!context.mounted) {
       return;
     }
 
     switch (selectedAction) {
       case _CategoryListAction.edit:
-        await _editCategory(category);
+        await _editCategory(context, ref, category);
         return;
       case _CategoryListAction.delete:
-        await _deleteCategory(category);
+        await _deleteCategory(context, ref, category);
         return;
       case null:
         return;
@@ -212,15 +168,12 @@ class _CategoriesPageState extends State<CategoriesPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(appStateProvider);
     final theme = Theme.of(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
-    final expenseCategories = _categories
-        .where((category) => category.type == CategoryType.expense)
-        .toList();
-    final incomeCategories = _categories
-        .where((category) => category.type == CategoryType.income)
-        .toList();
+    final expenseCategories = state.expenseCategories;
+    final incomeCategories = state.incomeCategories;
 
     return SafeArea(
       child: ListView(
@@ -257,111 +210,105 @@ class _CategoriesPageState extends State<CategoriesPage> {
               ),
               const SizedBox(width: 12),
               FilledButton.icon(
-                onPressed: _addCategory,
+                onPressed: () => _addCategory(context, ref),
                 icon: const Icon(Icons.add_rounded),
                 label: const Text('Add'),
               ),
             ],
           ),
           const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(28),
-            ),
-            child: Row(
+          if (!state.hasLoaded && state.isLoading)
+            const Center(child: CircularProgressIndicator())
+          else ...[
+            Row(
               children: [
-                Expanded(
-                  child: _CategoryStat(
-                    label: 'Expenses',
-                    value: expenseCategories.length.toString(),
-                    accentColor: AppColors.iconMuted,
-                    backgroundColor: AppColors.expenseSurface,
-                    onTap: () => _openTypeSummary(CategoryType.expense),
+                Text(
+                  'Expenses',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _CategoryStat(
-                    label: 'Income',
-                    value: incomeCategories.length.toString(),
-                    accentColor: AppColors.income,
-                    backgroundColor: AppColors.incomeSurface,
-                    onTap: () => _openTypeSummary(CategoryType.income),
+                const Spacer(),
+                if (expenseCategories.isNotEmpty)
+                  TextButton(
+                    onPressed: () =>
+                        _openTypeSummary(context, CategoryType.expense),
+                    child: const Text('Overview'),
                   ),
-                ),
               ],
             ),
-          ),
-          const SizedBox(height: 28),
-          CategorySection(
-            title: 'Expense',
-            categories: expenseCategories,
-            onCategoryTap: _openCategoryDetails,
-            onCategoryLongPressStart: _showCategoryActionMenu,
-          ),
-          CategorySection(
-            title: 'Income',
-            categories: incomeCategories,
-            onCategoryTap: _openCategoryDetails,
-            onCategoryLongPressStart: _showCategoryActionMenu,
-          ),
+            const SizedBox(height: 8),
+            if (expenseCategories.isEmpty)
+              const _EmptyCategoryGroup(label: 'No expense categories yet.')
+            else
+              CategorySection(
+                title: '',
+                categories: expenseCategories,
+                onCategoryTap: (category) =>
+                    _openCategoryDetails(context, category),
+                onCategoryLongPressStart: (category, details) =>
+                    _showCategoryActionMenu(context, ref, category, details),
+              ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Text(
+                  'Income',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const Spacer(),
+                if (incomeCategories.isNotEmpty)
+                  TextButton(
+                    onPressed: () =>
+                        _openTypeSummary(context, CategoryType.income),
+                    child: const Text('Overview'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (incomeCategories.isEmpty)
+              const _EmptyCategoryGroup(label: 'No income categories yet.')
+            else
+              CategorySection(
+                title: '',
+                categories: incomeCategories,
+                onCategoryTap: (category) =>
+                    _openCategoryDetails(context, category),
+                onCategoryLongPressStart: (category, details) =>
+                    _showCategoryActionMenu(context, ref, category, details),
+              ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _CategoryStat extends StatelessWidget {
-  const _CategoryStat({
-    required this.label,
-    required this.value,
-    required this.accentColor,
-    required this.backgroundColor,
-    this.onTap,
-  });
+class _EmptyCategoryGroup extends StatelessWidget {
+  const _EmptyCategoryGroup({required this.label});
 
   final String label;
-  final String value;
-  final Color accentColor;
-  final Color backgroundColor;
-  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                value,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: accentColor,
-                ),
-              ),
-            ],
-          ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.bodyLarge?.copyWith(
+          color: AppColors.textSecondary,
         ),
       ),
     );

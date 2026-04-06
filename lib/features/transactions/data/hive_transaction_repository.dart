@@ -123,7 +123,20 @@ class HiveTransactionRepository implements TransactionRepository {
         (_box.get(HiveStorage.transactionsKey) as List<dynamic>? ?? const [])
             .cast<Map<dynamic, dynamic>>();
 
-    return storedTransactions.map(TransactionItem.fromMap).toList();
+    final transactions = <TransactionItem>[];
+    for (final map in storedTransactions) {
+      try {
+        transactions.add(TransactionItem.fromMap(map));
+      } catch (error, stackTrace) {
+        _logger.w(
+          'Skipped invalid stored transaction entry.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
+
+    return transactions;
   }
 
   void _validateTransaction(TransactionItem transaction) {

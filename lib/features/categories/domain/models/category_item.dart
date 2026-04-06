@@ -32,8 +32,15 @@ class CategoryItem {
       id: map['id'] as String? ?? '',
       name: map['name'] as String? ?? '',
       description: map['description'] as String? ?? '',
-      type: CategoryType.values.byName(map['type'] as String? ?? 'expense'),
+      type: _categoryTypeFromName(map['type'] as String?),
       icon: _deserializeIcon(map['icon'] as Map<dynamic, dynamic>?),
+    );
+  }
+
+  static CategoryType _categoryTypeFromName(String? value) {
+    return CategoryType.values.firstWhere(
+      (type) => type.name == value,
+      orElse: () => CategoryType.expense,
     );
   }
 

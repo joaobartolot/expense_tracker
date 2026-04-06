@@ -1,31 +1,13 @@
-import 'package:expense_tracker/core/theme/app_colors.dart';
-import 'package:expense_tracker/features/accounts/data/account_repository.dart';
-import 'package:expense_tracker/features/accounts/domain/services/balance_overview_service.dart';
 import 'package:expense_tracker/features/accounts/presentation/pages/accounts_page.dart';
-import 'package:expense_tracker/features/categories/data/category_repository.dart';
+import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/features/categories/presentation/pages/categories_page.dart';
 import 'package:expense_tracker/features/navigation/presentation/widgets/pill_bottom_nav_bar.dart';
-import 'package:expense_tracker/features/settings/data/settings_repository.dart';
 import 'package:expense_tracker/features/settings/presentation/pages/settings_page.dart';
-import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:expense_tracker/features/transactions/presentation/pages/home_page.dart';
 import 'package:flutter/material.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({
-    super.key,
-    required this.repository,
-    required this.categoryRepository,
-    required this.settingsRepository,
-    required this.accountRepository,
-    required this.balanceOverviewService,
-  });
-
-  final TransactionRepository repository;
-  final CategoryRepository categoryRepository;
-  final SettingsRepository settingsRepository;
-  final AccountRepository accountRepository;
-  final BalanceOverviewService balanceOverviewService;
+  const AppShell({super.key});
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -39,26 +21,12 @@ class _AppShellState extends State<AppShell> {
   int _currentIndex = 0;
 
   late final List<Widget> _pages = [
-    HomePage(
-      repository: widget.repository,
-      categoryRepository: widget.categoryRepository,
-      settingsRepository: widget.settingsRepository,
-      accountRepository: widget.accountRepository,
-      balanceOverviewService: widget.balanceOverviewService,
-    ),
-    AccountsPage(
-      repository: widget.accountRepository,
-      transactionRepository: widget.repository,
-      settingsRepository: widget.settingsRepository,
-      balanceOverviewService: widget.balanceOverviewService,
-    ),
-    CategoriesPage(
-      repository: widget.categoryRepository,
-      transactionRepository: widget.repository,
-    ),
+    const HomePage(),
+    const AccountsPage(),
+    const CategoriesPage(),
     // TODO: Replace this placeholder with the real recurring-transactions feature flow.
     const _PlaceholderPage(label: 'Recurring'),
-    SettingsPage(repository: widget.settingsRepository),
+    const SettingsPage(),
   ];
 
   static const List<NavItemData> _items = [

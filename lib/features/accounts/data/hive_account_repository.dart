@@ -131,7 +131,20 @@ class HiveAccountRepository implements AccountRepository {
         (_box.get(HiveStorage.accountsKey) as List<dynamic>? ?? const [])
             .cast<Map<dynamic, dynamic>>();
 
-    return _normalizeAccounts(storedAccounts.map(Account.fromMap).toList());
+    final accounts = <Account>[];
+    for (final map in storedAccounts) {
+      try {
+        accounts.add(Account.fromMap(map));
+      } catch (error, stackTrace) {
+        _logger.w(
+          'Skipped invalid stored account entry.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
+
+    return _normalizeAccounts(accounts);
   }
 
   List<Account> _normalizeAccounts(List<Account> accounts) {

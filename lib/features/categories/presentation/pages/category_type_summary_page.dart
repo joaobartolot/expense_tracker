@@ -1,23 +1,19 @@
+import 'package:expense_tracker/app/state/app_state_provider.dart';
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/currency_formatter.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class CategoryTypeSummaryPage extends StatelessWidget {
-  const CategoryTypeSummaryPage({
-    super.key,
-    required this.type,
-    required this.categories,
-    required this.transactions,
-  });
+class CategoryTypeSummaryPage extends ConsumerWidget {
+  const CategoryTypeSummaryPage({super.key, required this.type});
 
   final CategoryType type;
-  final List<CategoryItem> categories;
-  final List<TransactionItem> transactions;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(appStateProvider);
     final theme = Theme.of(context);
     final isIncome = type == CategoryType.income;
     final title = isIncome ? 'Income overview' : 'Expense overview';
@@ -25,6 +21,10 @@ class CategoryTypeSummaryPage extends StatelessWidget {
     final accentSurface = isIncome
         ? AppColors.incomeSurface
         : AppColors.expenseSurface;
+    final categories = isIncome
+        ? state.incomeCategories
+        : state.expenseCategories;
+    final transactions = state.transactions;
     final filteredTransactions = transactions
         .where((transaction) => transaction.type == _toTransactionType(type))
         .toList(growable: false);
@@ -260,28 +260,26 @@ class _DetailTile extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.white,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
             ),
-            child: Icon(icon, size: 18, color: AppColors.brandDark),
+            child: Icon(icon, color: AppColors.iconMuted, size: 20),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   label,
-                  style: theme.textTheme.bodySmall?.copyWith(
+                  style: theme.textTheme.labelLarge?.copyWith(
                     color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   value,
-                  style: theme.textTheme.bodyLarge?.copyWith(
+                  style: theme.textTheme.titleMedium?.copyWith(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
                   ),
@@ -321,42 +319,34 @@ class _CategoryBreakdownTile extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: backgroundColor,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(category.icon, size: 18, color: accentColor),
+            child: Icon(category.icon, color: accentColor, size: 22),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   category.name,
-                  style: theme.textTheme.bodyLarge?.copyWith(
+                  style: theme.textTheme.titleMedium?.copyWith(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
-                  category.description,
-                  style: theme.textTheme.bodyMedium?.copyWith(
+                  '$transactionCount transaction${transactionCount == 1 ? '' : 's'}',
+                  style: theme.textTheme.labelLarge?.copyWith(
                     color: AppColors.textSecondary,
                   ),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            '$transactionCount tx',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: accentColor,
-              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -390,7 +380,7 @@ class _StatusBadge extends StatelessWidget {
         label,
         style: theme.textTheme.labelLarge?.copyWith(
           color: textColor,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

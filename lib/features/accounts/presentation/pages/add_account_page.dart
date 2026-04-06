@@ -1,3 +1,4 @@
+import 'package:expense_tracker/app/state/app_state_provider.dart';
 import 'package:expense_tracker/core/logging/scoped_log_printer.dart';
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/currency_formatter.dart';
@@ -6,31 +7,23 @@ import 'package:expense_tracker/core/widgets/app_text_input.dart';
 import 'package:expense_tracker/core/widgets/custom_dropdown_selector.dart';
 import 'package:expense_tracker/core/widgets/primary_action_button.dart';
 import 'package:expense_tracker/core/widgets/segmented_toggle_field.dart';
-import 'package:expense_tracker/features/accounts/data/account_repository.dart';
 import 'package:expense_tracker/features/accounts/domain/models/account.dart';
-import 'package:expense_tracker/features/settings/data/settings_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 
 final _logger = Logger(printer: ScopedLogPrinter('add_account_page'));
 
-class AddAccountPage extends StatefulWidget {
-  const AddAccountPage({
-    super.key,
-    required this.repository,
-    required this.settingsRepository,
-    this.initialAccount,
-  });
+class AddAccountPage extends ConsumerStatefulWidget {
+  const AddAccountPage({super.key, this.initialAccount});
 
-  final AccountRepository repository;
-  final SettingsRepository settingsRepository;
   final Account? initialAccount;
 
   @override
-  State<AddAccountPage> createState() => _AddAccountPageState();
+  ConsumerState<AddAccountPage> createState() => _AddAccountPageState();
 }
 
-class _AddAccountPageState extends State<AddAccountPage> {
+class _AddAccountPageState extends ConsumerState<AddAccountPage> {
   late final TextEditingController _nameController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _balanceController;
@@ -53,7 +46,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
     _selectedType = initialAccount?.type ?? AccountType.bank;
     _selectedCurrencyCode =
         initialAccount?.currencyCode ??
-        widget.settingsRepository.getSettings().defaultCurrencyCode;
+        ref.read(appStateProvider).settings.defaultCurrencyCode;
     _isPrimaryAccount = initialAccount?.isPrimary ?? false;
     _paymentTracking =
         initialAccount?.paymentTracking ?? CreditCardPaymentTracking.manual;
@@ -157,8 +150,9 @@ class _AddAccountPageState extends State<AddAccountPage> {
 
     try {
       final initialAccount = widget.initialAccount;
+      final appState = ref.read(appStateProvider.notifier);
       account = Account(
-        id: initialAccount?.id ?? widget.repository.createAccountId(),
+        id: initialAccount?.id ?? appState.createAccountId(),
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
         type: _selectedType,
@@ -169,11 +163,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
         paymentTracking: _isCreditCard ? _paymentTracking : null,
       );
 
-      if (_isEditing) {
-        await widget.repository.updateAccount(account);
-      } else {
-        await widget.repository.addAccount(account);
-      }
+      await appState.saveAccount(account, isEditing: _isEditing);
     } catch (error, stackTrace) {
       _logger.e(
         'Failed to save account ${account?.id ?? 'unknown'}.',

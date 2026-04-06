@@ -1,92 +1,47 @@
+import 'package:expense_tracker/app/state/app_state_provider.dart';
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/currency_formatter.dart';
-import 'package:expense_tracker/features/categories/data/category_repository.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
 import 'package:expense_tracker/features/categories/presentation/pages/add_category_page.dart';
-import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
-import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class CategoryDetailPage extends StatefulWidget {
-  const CategoryDetailPage({
-    super.key,
-    required this.category,
-    required this.categoryRepository,
-    required this.transactionRepository,
-  });
+class CategoryDetailPage extends ConsumerWidget {
+  const CategoryDetailPage({super.key, required this.categoryId});
 
-  final CategoryItem category;
-  final CategoryRepository categoryRepository;
-  final TransactionRepository transactionRepository;
+  final String categoryId;
 
-  @override
-  State<CategoryDetailPage> createState() => _CategoryDetailPageState();
-}
-
-class _CategoryDetailPageState extends State<CategoryDetailPage> {
-  List<TransactionItem> _transactions = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTransactions();
-  }
-
-  Future<void> _loadTransactions() async {
-    final transactions = await widget.transactionRepository.getTransactions();
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _transactions = transactions;
-    });
-  }
-
-  Future<void> _editCategory() async {
+  Future<void> _editCategory(
+    BuildContext context,
+    WidgetRef ref,
+    CategoryItem category,
+  ) async {
     final updatedCategory = await Navigator.of(context).push<CategoryItem>(
       MaterialPageRoute(
-        builder: (context) => AddCategoryPage(initialCategory: widget.category),
+        builder: (context) => AddCategoryPage(initialCategory: category),
       ),
     );
 
-    if (updatedCategory == null) {
+    if (updatedCategory == null || !context.mounted) {
       return;
     }
 
-    await widget.categoryRepository.updateCategory(updatedCategory);
+    await ref
+        .read(appStateProvider.notifier)
+        .saveCategory(updatedCategory, isEditing: true);
 
-    if (!mounted) {
+    if (!context.mounted) {
       return;
     }
 
     Navigator.of(context).pop(true);
   }
 
-  Future<void> _deleteCategory() async {
-    final relatedTransactions = _relatedTransactions;
-    if (relatedTransactions.isNotEmpty) {
-      await showDialog<void>(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Category in use'),
-            content: const Text(
-              'Move or delete the related transactions before removing this category.',
-            ),
-            actions: [
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
-      return;
-    }
-
+  Future<void> _deleteCategory(
+    BuildContext context,
+    WidgetRef ref,
+    CategoryItem category,
+  ) async {
     final didConfirm = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -111,35 +66,61 @@ class _CategoryDetailPageState extends State<CategoryDetailPage> {
       },
     );
 
-    if (didConfirm != true) {
+    if (didConfirm != true || !context.mounted) {
       return;
     }
 
-    await widget.categoryRepository.deleteCategory(widget.category.id);
+    try {
+      await ref.read(appStateProvider.notifier).deleteCategory(category);
+    } on LinkedEntityException catch (error) {
+      if (!context.mounted) {
+        return;
+      }
 
-    if (!mounted) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Category in use'),
+            content: Text(error.message),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
+    if (!context.mounted) {
       return;
     }
 
     Navigator.of(context).pop(true);
   }
 
-  List<TransactionItem> get _relatedTransactions {
-    return _transactions
-        .where((transaction) => transaction.categoryId == widget.category.id)
-        .toList(growable: false);
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(appStateProvider);
     final theme = Theme.of(context);
-    final category = widget.category;
+    final category = state.categoryById(categoryId);
+
+    if (category == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Category details')),
+        body: const Center(child: Text('This category no longer exists.')),
+      );
+    }
+
+    final relatedTransactions = state.transactionsForCategory(category.id);
     final isIncome = category.type == CategoryType.income;
     final iconBackground = isIncome
         ? AppColors.incomeSurface
         : AppColors.expenseSurface;
     final iconColor = isIncome ? AppColors.income : AppColors.iconMuted;
-    final relatedTransactions = _relatedTransactions;
     final totalAmount = relatedTransactions.fold<double>(
       0,
       (sum, transaction) => sum + transaction.amount,
@@ -259,64 +240,44 @@ class _CategoryDetailPageState extends State<CategoryDetailPage> {
                     )
                   : Column(
                       children: relatedTransactions
-                          .take(3)
-                          .map((transaction) {
-                            return Padding(
+                          .take(5)
+                          .map(
+                            (transaction) => Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: _RelatedTransactionTile(
-                                transaction: transaction,
-                                isIncome: isIncome,
+                              child: _RecentTransactionTile(
+                                title: transaction.title,
+                                amount: formatCurrency(transaction.amount),
                               ),
-                            );
-                          })
+                            ),
+                          )
                           .toList(growable: false),
                     ),
             ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _editCategory(context, ref, category),
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Edit'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => _deleteCategory(context, ref, category),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.danger,
+                      foregroundColor: AppColors.white,
+                    ),
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Delete'),
+                  ),
+                ),
+              ],
+            ),
           ],
-        ),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-        decoration: const BoxDecoration(
-          color: Color(0xCCF4F7F5),
-          border: Border(top: BorderSide(color: Color(0xFFE2E8E4))),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _deleteCategory,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(56),
-                    foregroundColor: AppColors.dangerDark,
-                    side: const BorderSide(color: Color(0xFFF2B8B5)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                  ),
-                  child: const Text('Delete'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: FilledButton(
-                  onPressed: _editCategory,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.brand,
-                    foregroundColor: AppColors.white,
-                    minimumSize: const Size.fromHeight(56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                  ),
-                  child: const Text('Edit category'),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -385,28 +346,26 @@ class _DetailTile extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.white,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
             ),
-            child: Icon(icon, size: 18, color: AppColors.brandDark),
+            child: Icon(icon, color: AppColors.iconMuted, size: 20),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   label,
-                  style: theme.textTheme.bodySmall?.copyWith(
+                  style: theme.textTheme.labelLarge?.copyWith(
                     color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   value,
-                  style: theme.textTheme.bodyLarge?.copyWith(
+                  style: theme.textTheme.titleMedium?.copyWith(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
                   ),
@@ -420,19 +379,15 @@ class _DetailTile extends StatelessWidget {
   }
 }
 
-class _RelatedTransactionTile extends StatelessWidget {
-  const _RelatedTransactionTile({
-    required this.transaction,
-    required this.isIncome,
-  });
+class _RecentTransactionTile extends StatelessWidget {
+  const _RecentTransactionTile({required this.title, required this.amount});
 
-  final TransactionItem transaction;
-  final bool isIncome;
+  final String title;
+  final String amount;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final localizations = MaterialLocalizations.of(context);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -442,49 +397,20 @@ class _RelatedTransactionTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: isIncome
-                  ? AppColors.incomeSurface
-                  : AppColors.expenseSurface,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              Icons.receipt_long_outlined,
-              size: 18,
-              color: isIncome ? AppColors.income : AppColors.iconMuted,
-            ),
-          ),
-          const SizedBox(width: 14),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  transaction.title,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  localizations.formatShortDate(transaction.date),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
+            child: Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(width: 12),
           Text(
-            formatCurrency(transaction.amount),
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: isIncome ? AppColors.income : AppColors.textPrimary,
-              fontWeight: FontWeight.w700,
+            amount,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: AppColors.textSecondary,
             ),
           ),
         ],
@@ -518,7 +444,7 @@ class _StatusBadge extends StatelessWidget {
         label,
         style: theme.textTheme.labelLarge?.copyWith(
           color: textColor,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

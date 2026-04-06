@@ -68,7 +68,7 @@ class Account {
     return Account(
       id: map['id'] as String? ?? '',
       name: map['name'] as String? ?? '',
-      type: AccountType.values.byName(map['type'] as String? ?? 'bank'),
+      type: _accountTypeFromName(map['type'] as String?),
       balance: (map['balance'] as num?)?.toDouble() ?? 0,
       currencyCode: map['currencyCode'] as String? ?? 'EUR',
       isPrimary: map['isPrimary'] as bool? ?? false,
@@ -115,6 +115,16 @@ class Account {
       return null;
     }
 
-    return CreditCardPaymentTracking.values.byName(value);
+    return CreditCardPaymentTracking.values.firstWhere(
+      (tracking) => tracking.name == value,
+      orElse: () => CreditCardPaymentTracking.manual,
+    );
+  }
+
+  static AccountType _accountTypeFromName(String? value) {
+    return AccountType.values.firstWhere(
+      (type) => type.name == value,
+      orElse: () => AccountType.bank,
+    );
   }
 }

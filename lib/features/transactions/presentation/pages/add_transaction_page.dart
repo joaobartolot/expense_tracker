@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:expense_tracker/app/state/app_state_provider.dart';
 import 'package:expense_tracker/core/logging/scoped_log_printer.dart';
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/currency_formatter.dart';
@@ -8,42 +9,31 @@ import 'package:expense_tracker/core/widgets/app_text_input.dart';
 import 'package:expense_tracker/core/widgets/custom_dropdown_selector.dart';
 import 'package:expense_tracker/core/widgets/primary_action_button.dart';
 import 'package:expense_tracker/core/widgets/segmented_toggle_field.dart';
-import 'package:expense_tracker/features/accounts/data/account_repository.dart';
 import 'package:expense_tracker/features/accounts/domain/models/account.dart';
-import 'package:expense_tracker/features/categories/data/category_repository.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
-import 'package:expense_tracker/features/settings/data/settings_repository.dart';
 import 'package:expense_tracker/features/transactions/data/exchange_rate_service.dart';
-import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 
 final _logger = Logger(printer: ScopedLogPrinter('add_transaction_page'));
 
-class AddTransactionPage extends StatefulWidget {
+class AddTransactionPage extends ConsumerStatefulWidget {
   const AddTransactionPage({
     super.key,
-    required this.repository,
-    required this.categoryRepository,
-    required this.accountRepository,
-    required this.settingsRepository,
     this.exchangeRateService = const ExchangeRateService(),
     this.initialTransaction,
   });
 
-  final TransactionRepository repository;
-  final CategoryRepository categoryRepository;
-  final AccountRepository accountRepository;
-  final SettingsRepository settingsRepository;
   final ExchangeRateService exchangeRateService;
   final TransactionItem? initialTransaction;
 
   @override
-  State<AddTransactionPage> createState() => _AddTransactionPageState();
+  ConsumerState<AddTransactionPage> createState() => _AddTransactionPageState();
 }
 
-class _AddTransactionPageState extends State<AddTransactionPage> {
+class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   late final TextEditingController _nameController;
   late final TextEditingController _amountController;
 
@@ -69,7 +59,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   bool get _isEditing => widget.initialTransaction != null;
 
   String get _defaultCurrencyCode =>
-      widget.settingsRepository.getSettings().defaultCurrencyCode;
+      ref.read(appStateProvider).settings.defaultCurrencyCode;
 
   DateTime get _conversionDate =>
       widget.initialTransaction?.date ?? DateTime.now();
@@ -102,7 +92,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     _amountController
       ..addListener(_formatAmountInput)
       ..addListener(_handleAmountChanged);
-    _loadData();
+    final state = ref.read(appStateProvider);
+    _accounts = state.accounts;
+    _categories = state.categories;
+    _selectedAccount = _resolveSelectedAccount(_accounts);
+    _selectedSourceAccount = _resolveSelectedSourceAccount(_accounts);
+    _selectedDestinationAccount = _resolveSelectedDestinationAccount(_accounts);
+    _selectedCategory = _resolveSelectedCategory(_categories);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
@@ -123,26 +119,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       ..dispose();
     _exchangeRateDebounceTimer?.cancel();
     super.dispose();
-  }
-
-  Future<void> _loadData() async {
-    final accounts = await widget.accountRepository.getAccounts();
-    final categories = await widget.categoryRepository.getCategories();
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _accounts = accounts;
-      _categories = categories;
-      _selectedAccount = _resolveSelectedAccount(accounts);
-      _selectedSourceAccount = _resolveSelectedSourceAccount(accounts);
-      _selectedDestinationAccount = _resolveSelectedDestinationAccount(
-        accounts,
-      );
-      _selectedCategory = _resolveSelectedCategory(categories);
-    });
   }
 
   Account? _resolveSelectedAccount(List<Account> accounts) {
@@ -602,8 +578,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
     try {
       final initialTransaction = widget.initialTransaction;
+      final appState = ref.read(appStateProvider.notifier);
       transaction = TransactionItem(
-        id: initialTransaction?.id ?? widget.repository.createTransactionId(),
+        id: initialTransaction?.id ?? appState.createTransactionId(),
         title: _nameController.text.trim(),
         categoryId: _type == TransactionType.transfer
             ? null
@@ -629,11 +606,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         exchangeRate: _usesForeignCurrency ? _exchangeRateValue : null,
       );
 
-      if (_isEditing) {
-        await widget.repository.updateTransaction(transaction);
-      } else {
-        await widget.repository.addTransaction(transaction);
-      }
+      await appState.saveTransaction(transaction, isEditing: _isEditing);
     } catch (error, stackTrace) {
       _logger.e(
         'Failed to save transaction ${transaction?.id ?? 'unknown'}.',
