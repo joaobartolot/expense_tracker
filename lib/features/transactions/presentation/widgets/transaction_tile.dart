@@ -12,7 +12,9 @@ class TransactionTile extends StatelessWidget {
     required this.categoryName,
     required this.categoryIcon,
     required this.accountName,
+    this.subtitle,
     this.destinationAccountName,
+    this.showSignedTransferAmount = false,
     this.onTap,
     this.onLongPressStart,
   });
@@ -23,7 +25,9 @@ class TransactionTile extends StatelessWidget {
   final String categoryName;
   final IconData categoryIcon;
   final String accountName;
+  final String? subtitle;
   final String? destinationAccountName;
+  final bool showSignedTransferAmount;
   final VoidCallback? onTap;
   final GestureLongPressStartCallback? onLongPressStart;
 
@@ -33,14 +37,22 @@ class TransactionTile extends StatelessWidget {
     final isTransfer = transaction.type == TransactionType.transfer;
     final isCreditCardPayment = transaction.isCreditCardPayment;
     final amountColor = isTransfer
-        ? AppColors.brandDark
+        ? (showSignedTransferAmount && displayAmount < 0
+              ? AppColors.textPrimary
+              : AppColors.brandDark)
         : isIncome
         ? AppColors.income
         : AppColors.textPrimary;
-    final amountPrefix = isTransfer ? '' : (isIncome ? '+' : '-');
-    final subtitle = isTransfer
-        ? '$accountName -> ${destinationAccountName ?? 'Unknown account'}'
-        : '$categoryName · $accountName';
+    final amountPrefix = isTransfer
+        ? (showSignedTransferAmount
+              ? (displayAmount > 0 ? '+' : (displayAmount < 0 ? '-' : ''))
+              : '')
+        : (isIncome ? '+' : '-');
+    final resolvedSubtitle =
+        subtitle ??
+        (isTransfer
+            ? '$accountName -> ${destinationAccountName ?? 'Unknown account'}'
+            : '$categoryName · $accountName');
 
     return Material(
       color: AppColors.surface,
@@ -91,7 +103,7 @@ class TransactionTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        subtitle,
+                        resolvedSubtitle,
                         style: TextStyle(
                           fontSize: 14,
                           color: AppColors.textSecondary,
@@ -102,7 +114,7 @@ class TransactionTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  '$amountPrefix${formatCurrency(displayAmount, currencyCode: displayCurrencyCode)}',
+                  '$amountPrefix${formatCurrency(displayAmount.abs(), currencyCode: displayCurrencyCode)}',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,

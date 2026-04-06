@@ -1,16 +1,16 @@
-import 'package:expense_tracker/features/accounts/data/account_repository.dart';
+import 'package:expense_tracker/core/utils/currency_conversion_service.dart';
 import 'package:expense_tracker/features/accounts/domain/models/account.dart';
 import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 
 class TransactionBalanceService {
   const TransactionBalanceService({
-    required AccountRepository accountRepository,
+    required CurrencyConversionService currencyConversionService,
     required TransactionRepository transactionRepository,
-  }) : _accountRepository = accountRepository,
+  }) : _currencyConversionService = currencyConversionService,
        _transactionRepository = transactionRepository;
 
-  final AccountRepository _accountRepository;
+  final CurrencyConversionService _currencyConversionService;
   final TransactionRepository _transactionRepository;
 
   Future<void> saveTransaction(
@@ -19,30 +19,16 @@ class TransactionBalanceService {
     TransactionItem? previousTransaction,
     required List<Account> currentAccounts,
   }) async {
-    final balanceChanges = calculateNetBalanceChanges(
-      previous: previousTransaction,
-      next: transaction,
-    );
-
-    await applyBalanceChanges(
-      changes: balanceChanges,
+    final normalizedTransaction = await _normalizeTransaction(
+      transaction,
       currentAccounts: currentAccounts,
     );
-
-    try {
-      if (isEditing) {
-        await _transactionRepository.updateTransaction(transaction);
-        return;
-      }
-
-      await _transactionRepository.addTransaction(transaction);
-    } catch (_) {
-      await applyBalanceChanges(
-        changes: invertBalanceChanges(balanceChanges),
-        currentAccounts: currentAccounts,
-      );
-      rethrow;
+    if (isEditing) {
+      await _transactionRepository.updateTransaction(normalizedTransaction);
+      return;
     }
+
+    await _transactionRepository.addTransaction(normalizedTransaction);
   }
 
   Future<void> deleteTransaction(
@@ -50,94 +36,108 @@ class TransactionBalanceService {
     required TransactionItem? existingTransaction,
     required List<Account> currentAccounts,
   }) async {
-    final balanceChanges = invertBalanceChanges(
-      existingTransaction?.balanceChanges ?? const {},
-    );
-
-    await applyBalanceChanges(
-      changes: balanceChanges,
-      currentAccounts: currentAccounts,
-    );
-
-    try {
-      await _transactionRepository.deleteTransaction(transactionId);
-    } catch (_) {
-      await applyBalanceChanges(
-        changes: invertBalanceChanges(balanceChanges),
-        currentAccounts: currentAccounts,
-      );
-      rethrow;
-    }
+    await _transactionRepository.deleteTransaction(transactionId);
   }
 
-  Map<String, double> calculateNetBalanceChanges({
-    required TransactionItem? previous,
-    required TransactionItem next,
-  }) {
-    final netChanges = <String, double>{};
-
-    void merge(Map<String, double> changes, {required double multiplier}) {
-      for (final entry in changes.entries) {
-        netChanges.update(
-          entry.key,
-          (value) => value + (entry.value * multiplier),
-          ifAbsent: () => entry.value * multiplier,
-        );
-      }
-    }
-
-    if (previous != null) {
-      merge(previous.balanceChanges, multiplier: -1);
-    }
-    merge(next.balanceChanges, multiplier: 1);
-
-    netChanges.removeWhere((_, value) => value == 0);
-    return netChanges;
-  }
-
-  Map<String, double> invertBalanceChanges(Map<String, double> changes) {
-    return {for (final entry in changes.entries) entry.key: -entry.value};
-  }
-
-  Future<void> applyBalanceChanges({
-    required Map<String, double> changes,
+  Future<void> deleteTransactions(
+    List<TransactionItem> transactions, {
     required List<Account> currentAccounts,
   }) async {
-    if (changes.isEmpty) {
-      return;
+    for (final transaction in transactions) {
+      await deleteTransaction(
+        transaction.id,
+        existingTransaction: transaction,
+        currentAccounts: currentAccounts,
+      );
     }
+  }
 
+  Future<TransactionItem> _normalizeTransaction(
+    TransactionItem transaction, {
+    required List<Account> currentAccounts,
+  }) async {
     final accountsById = {
       for (final account in currentAccounts) account.id: account,
     };
-    final originalAccounts = <String, Account>{};
 
-    for (final entry in changes.entries) {
-      final account = accountsById[entry.key];
-      if (account == null) {
+    if (transaction.isTransfer) {
+      final sourceAccount = accountsById[transaction.sourceAccountId];
+      final destinationAccount = accountsById[transaction.destinationAccountId];
+      if (sourceAccount == null || destinationAccount == null) {
+        return transaction;
+      }
+
+      final sourceCurrencyCode = sourceAccount.currencyCode;
+      final enteredCurrencyCode =
+          transaction.foreignCurrencyCode ?? transaction.currencyCode;
+      final enteredAmount = transaction.foreignAmount ?? transaction.amount;
+      final sourceAmount = await _currencyConversionService.tryConvertAmount(
+        amount: enteredAmount,
+        fromCurrencyCode: enteredCurrencyCode,
+        toCurrencyCode: sourceCurrencyCode,
+        date: transaction.date,
+      );
+      if (sourceAmount == null) {
         throw StateError(
-          'Cannot update balance for missing account ${entry.key}.',
+          'Could not convert the transfer into the source currency.',
         );
       }
 
-      originalAccounts[entry.key] = account;
-      accountsById[entry.key] = account.copyWith(
-        balance: account.balance + entry.value,
+      final destinationAmount = await _currencyConversionService
+          .tryConvertAmount(
+            amount: sourceAmount,
+            fromCurrencyCode: sourceCurrencyCode,
+            toCurrencyCode: destinationAccount.currencyCode,
+            date: transaction.date,
+          );
+      if (destinationAmount == null) {
+        throw StateError(
+          'Could not convert the transfer into the destination currency.',
+        );
+      }
+
+      final transferRate = sourceCurrencyCode == destinationAccount.currencyCode
+          ? 1.0
+          : destinationAmount / sourceAmount;
+
+      return transaction.copyWith(
+        amount: sourceAmount,
+        currencyCode: sourceCurrencyCode,
+        destinationAmount: destinationAmount,
+        destinationCurrencyCode: destinationAccount.currencyCode,
+        exchangeRate: transferRate,
       );
     }
 
-    final updatedAccountIds = <String>[];
-
-    try {
-      for (final accountId in changes.keys) {
-        await _accountRepository.updateAccount(accountsById[accountId]!);
-        updatedAccountIds.add(accountId);
-      }
-    } catch (_) {
-      for (final accountId in updatedAccountIds.reversed) {
-        await _accountRepository.updateAccount(originalAccounts[accountId]!);
-      }
-      rethrow;
+    final account = accountsById[transaction.accountId];
+    if (account == null) {
+      return transaction;
     }
+
+    final targetCurrencyCode = account.currencyCode;
+    final enteredCurrencyCode =
+        transaction.foreignCurrencyCode ?? transaction.currencyCode;
+    final enteredAmount = transaction.foreignAmount ?? transaction.amount;
+    final normalizedAmount = await _currencyConversionService.tryConvertAmount(
+      amount: enteredAmount,
+      fromCurrencyCode: enteredCurrencyCode,
+      toCurrencyCode: targetCurrencyCode,
+      date: transaction.date,
+    );
+
+    if (normalizedAmount == null) {
+      throw StateError(
+        'Could not convert the transaction into the account currency.',
+      );
+    }
+
+    return transaction.copyWith(
+      amount: normalizedAmount,
+      currencyCode: targetCurrencyCode,
+      exchangeRate: enteredCurrencyCode == targetCurrencyCode
+          ? 1
+          : normalizedAmount / enteredAmount,
+      clearExchangeRate: enteredCurrencyCode == targetCurrencyCode,
+    );
   }
 }

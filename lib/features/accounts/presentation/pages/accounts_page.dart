@@ -3,6 +3,7 @@ import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/widgets/context_action_menu.dart';
 import 'package:expense_tracker/features/accounts/domain/models/account.dart';
 import 'package:expense_tracker/features/accounts/presentation/pages/add_account_page.dart';
+import 'package:expense_tracker/features/accounts/presentation/pages/account_overview_page.dart';
 import 'package:expense_tracker/features/accounts/presentation/widgets/account_summary_card.dart';
 import 'package:expense_tracker/features/accounts/presentation/widgets/account_tile.dart';
 import 'package:expense_tracker/features/transactions/presentation/pages/add_transaction_page.dart';
@@ -33,6 +34,17 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (context) => AddAccountPage(initialAccount: account),
+      ),
+    );
+  }
+
+  Future<void> _openAccountOverview(
+    BuildContext context,
+    Account account,
+  ) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) => AccountOverviewPage(accountId: account.id),
       ),
     );
   }
@@ -350,7 +362,8 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
                                   ? () =>
                                         _openCreditCardPayment(context, account)
                                   : null,
-                              onTap: () => _openEditAccount(context, account),
+                              onTap: () =>
+                                  _openAccountOverview(context, account),
                               onLongPressStart: (details) =>
                                   _showAccountActionMenu(
                                     context,

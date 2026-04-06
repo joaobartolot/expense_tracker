@@ -12,6 +12,10 @@ class TransactionGroup extends StatelessWidget {
     required this.categoryIconFor,
     required this.accountNameFor,
     required this.destinationAccountNameFor,
+    this.subtitleFor,
+    this.showSignedTransferAmountFor,
+    required this.displayAmountFor,
+    required this.displayCurrencyCodeFor,
     required this.onTransactionTap,
     required this.onTransactionLongPressStart,
   });
@@ -22,6 +26,10 @@ class TransactionGroup extends StatelessWidget {
   final IconData Function(TransactionItem transaction) categoryIconFor;
   final String Function(TransactionItem transaction) accountNameFor;
   final String? Function(TransactionItem transaction) destinationAccountNameFor;
+  final String? Function(TransactionItem transaction)? subtitleFor;
+  final bool Function(TransactionItem transaction)? showSignedTransferAmountFor;
+  final double Function(TransactionItem transaction) displayAmountFor;
+  final String Function(TransactionItem transaction) displayCurrencyCodeFor;
   final ValueChanged<TransactionItem> onTransactionTap;
   final void Function(TransactionItem, LongPressStartDetails)
   onTransactionLongPressStart;
@@ -50,10 +58,15 @@ class TransactionGroup extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 12),
               child: TransactionTile(
                 transaction: transaction,
+                displayAmount: displayAmountFor(transaction),
+                displayCurrencyCode: displayCurrencyCodeFor(transaction),
                 categoryName: categoryNameFor(transaction),
                 categoryIcon: categoryIconFor(transaction),
                 accountName: accountNameFor(transaction),
+                subtitle: subtitleFor?.call(transaction),
                 destinationAccountName: destinationAccountNameFor(transaction),
+                showSignedTransferAmount:
+                    showSignedTransferAmountFor?.call(transaction) ?? false,
                 onTap: () => onTransactionTap(transaction),
                 onLongPressStart: (details) =>
                     onTransactionLongPressStart(transaction, details),

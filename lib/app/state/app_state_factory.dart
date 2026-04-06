@@ -1,6 +1,7 @@
 import 'package:expense_tracker/app/state/app_state_snapshot.dart';
 import 'package:expense_tracker/core/utils/currency_conversion_service.dart';
 import 'package:expense_tracker/features/accounts/domain/models/account.dart';
+import 'package:expense_tracker/features/accounts/domain/models/credit_card_account_state.dart';
 import 'package:expense_tracker/features/accounts/domain/services/balance_overview_service.dart';
 import 'package:expense_tracker/features/accounts/domain/services/credit_card_overview_service.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
@@ -36,6 +37,12 @@ class AppStateFactory {
     final selectedPeriod = _resolveSelectedPeriod(
       previous: previous,
       settings: settings,
+      currentDate: currentDate,
+    );
+    final accountSelectedPeriods = _resolveAccountSelectedPeriods(
+      previous: previous,
+      settings: settings,
+      accounts: accounts,
       currentDate: currentDate,
     );
     final accountsById = {for (final account in accounts) account.id: account};
@@ -79,6 +86,13 @@ class AppStateFactory {
       transactions: transactions,
       now: currentDate,
     );
+    final accountOverviews = _buildAccountOverviews(
+      accounts: accounts,
+      transactions: transactions,
+      effectiveBalances: effectiveBalances,
+      creditCardStates: creditCardStates,
+      accountSelectedPeriods: accountSelectedPeriods,
+    );
 
     return AppStateSnapshot(
       hasLoaded: previous.hasLoaded,
@@ -106,6 +120,8 @@ class AppStateFactory {
         convertedTransactionAmounts: transactionAggregation.convertedAmounts,
         missingTransactionIds: transactionAggregation.missingTransactionIds,
       ),
+      accountSelectedPeriods: accountSelectedPeriods,
+      accountOverviews: accountOverviews,
       historyFilter: previous.historyFilter,
       historySort: previous.historySort,
       historySearchQuery: previous.historySearchQuery,
@@ -123,11 +139,14 @@ class AppStateFactory {
   AppStateSnapshot rebuildDerivedState(
     AppStateSnapshot current, {
     SelectedPeriod? selectedPeriod,
+    Map<String, SelectedPeriod>? accountSelectedPeriods,
     TransactionHistoryFilter? historyFilter,
     TransactionHistorySort? historySort,
     String? historySearchQuery,
   }) {
     final nextPeriod = selectedPeriod ?? current.selectedPeriod;
+    final nextAccountSelectedPeriods =
+        accountSelectedPeriods ?? current.accountSelectedPeriods;
     final nextFilter = historyFilter ?? current.historyFilter;
     final nextSort = historySort ?? current.historySort;
     final nextQuery = historySearchQuery ?? current.historySearchQuery;
@@ -143,6 +162,14 @@ class AppStateFactory {
         convertedTransactionAmounts: current.convertedTransactionAmounts,
         missingTransactionIds: current.missingConvertedTransactionIds,
       ),
+      accountSelectedPeriods: nextAccountSelectedPeriods,
+      accountOverviews: _buildAccountOverviews(
+        accounts: current.accounts,
+        transactions: current.transactions,
+        effectiveBalances: current.effectiveBalances,
+        creditCardStates: current.creditCardStates,
+        accountSelectedPeriods: nextAccountSelectedPeriods,
+      ),
       historyFilter: nextFilter,
       historySort: nextSort,
       historySearchQuery: nextQuery,
@@ -155,6 +182,31 @@ class AppStateFactory {
         query: nextQuery,
       ),
     );
+  }
+
+  Map<String, SelectedPeriod> _resolveAccountSelectedPeriods({
+    required AppStateSnapshot previous,
+    required AppSettings settings,
+    required List<Account> accounts,
+    required DateTime currentDate,
+  }) {
+    final currentPeriod = SelectedPeriod.containing(
+      date: currentDate,
+      financialCycleDay: settings.financialCycleDay,
+    );
+    final nextPeriods = <String, SelectedPeriod>{};
+
+    for (final account in accounts) {
+      final previousPeriod = previous.accountSelectedPeriods[account.id];
+      nextPeriods[account.id] = previous.hasLoaded && previousPeriod != null
+          ? SelectedPeriod.containing(
+              date: previousPeriod.start,
+              financialCycleDay: settings.financialCycleDay,
+            )
+          : currentPeriod;
+    }
+
+    return nextPeriods;
   }
 
   SelectedPeriod _resolveSelectedPeriod({
@@ -211,6 +263,122 @@ class AppStateFactory {
       expenses: expenses,
       netMovement: income - expenses,
       missingConversionCount: missingConversionCount,
+    );
+  }
+
+  Map<String, AccountOverview> _buildAccountOverviews({
+    required List<Account> accounts,
+    required List<TransactionItem> transactions,
+    required Map<String, double> effectiveBalances,
+    required Map<String, CreditCardAccountState> creditCardStates,
+    required Map<String, SelectedPeriod> accountSelectedPeriods,
+  }) {
+    final overviews = <String, AccountOverview>{};
+
+    for (final account in accounts) {
+      final selectedPeriod = accountSelectedPeriods[account.id];
+      if (selectedPeriod == null) {
+        continue;
+      }
+
+      final allTransactions = transactions
+          .where(
+            (transaction) => transaction.linkedAccountIds.contains(account.id),
+          )
+          .toList(growable: false);
+      final sortedTransactions = [...allTransactions]
+        ..sort((a, b) => b.date.compareTo(a.date));
+      final periodTransactions = sortedTransactions
+          .where((transaction) => selectedPeriod.contains(transaction.date))
+          .toList(growable: false);
+
+      overviews[account.id] = AccountOverview(
+        account: account,
+        balance: effectiveBalances[account.id] ?? account.openingBalance,
+        creditCardState: creditCardStates[account.id],
+        selectedPeriod: selectedPeriod,
+        periodSummary: _buildAccountActivitySummary(
+          accountId: account.id,
+          transactions: periodTransactions,
+        ),
+        periodTransferSummary: _buildAccountTransferSummary(
+          accountId: account.id,
+          transactions: periodTransactions,
+        ),
+        periodTransactions: periodTransactions,
+        allTransactions: sortedTransactions,
+      );
+    }
+
+    return overviews;
+  }
+
+  ActivitySummary _buildAccountActivitySummary({
+    required String accountId,
+    required List<TransactionItem> transactions,
+  }) {
+    var income = 0.0;
+    var expenses = 0.0;
+
+    for (final transaction in transactions) {
+      if (transaction.accountId != accountId) {
+        continue;
+      }
+
+      switch (transaction.type) {
+        case TransactionType.income:
+          income += transaction.amount;
+          break;
+        case TransactionType.expense:
+          expenses += transaction.amount;
+          break;
+        case TransactionType.transfer:
+          break;
+      }
+    }
+
+    return ActivitySummary(
+      income: income,
+      expenses: expenses,
+      netMovement: income - expenses,
+      missingConversionCount: 0,
+    );
+  }
+
+  AccountTransferSummary _buildAccountTransferSummary({
+    required String accountId,
+    required List<TransactionItem> transactions,
+  }) {
+    var incoming = 0.0;
+    var outgoing = 0.0;
+    var transferCount = 0;
+
+    for (final transaction in transactions) {
+      if (!transaction.isTransfer) {
+        continue;
+      }
+
+      final isOutgoing = transaction.sourceAccountId == accountId;
+      final isIncoming = transaction.destinationAccountId == accountId;
+      if (!isOutgoing && !isIncoming) {
+        continue;
+      }
+
+      transferCount += 1;
+
+      if (isOutgoing) {
+        outgoing += transaction.amount;
+      }
+      if (isIncoming) {
+        incoming += transaction.destinationAmount ?? transaction.amount;
+      }
+    }
+
+    return AccountTransferSummary(
+      incoming: incoming,
+      outgoing: outgoing,
+      netMovement: incoming - outgoing,
+      transferCount: transferCount,
     );
   }
 

@@ -6,6 +6,11 @@ import 'package:expense_tracker/features/categories/presentation/pages/add_categ
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+enum _CategoryDeletionAction {
+  deleteCategoryOnly,
+  deleteCategoryAndTransactions,
+}
+
 class CategoryDetailPage extends ConsumerWidget {
   const CategoryDetailPage({super.key, required this.categoryId});
 
@@ -42,57 +47,84 @@ class CategoryDetailPage extends ConsumerWidget {
     WidgetRef ref,
     CategoryItem category,
   ) async {
-    final didConfirm = await showDialog<bool>(
+    final state = ref.read(appStateProvider);
+    final linkedTransactions = state.transactionsForCategory(category.id);
+    final deletionAction = await showDialog<_CategoryDeletionAction>(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('Delete category?'),
-          content: const Text('This category will be removed from your list.'),
+          content: Text(
+            linkedTransactions.isEmpty
+                ? 'This category will be removed from your list.'
+                : 'This category has ${linkedTransactions.length} linked transaction${linkedTransactions.length == 1 ? '' : 's'}. Delete the category only if you also want to remove those transactions.',
+          ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: () => Navigator.of(context).pop(),
               child: const Text('Cancel'),
             ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.danger,
-                foregroundColor: AppColors.white,
+            if (linkedTransactions.isEmpty)
+              FilledButton(
+                onPressed: () => Navigator.of(
+                  context,
+                ).pop(_CategoryDeletionAction.deleteCategoryOnly),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                  foregroundColor: AppColors.white,
+                ),
+                child: const Text('Delete'),
+              )
+            else
+              FilledButton(
+                onPressed: () => Navigator.of(
+                  context,
+                ).pop(_CategoryDeletionAction.deleteCategoryAndTransactions),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                  foregroundColor: AppColors.white,
+                ),
+                child: const Text('Delete all'),
               ),
-              child: const Text('Delete'),
-            ),
           ],
         );
       },
     );
 
-    if (didConfirm != true || !context.mounted) {
+    if (deletionAction == null || !context.mounted) {
       return;
     }
 
-    try {
-      await ref.read(appStateProvider.notifier).deleteCategory(category);
-    } on LinkedEntityException catch (error) {
-      if (!context.mounted) {
+    if (deletionAction ==
+        _CategoryDeletionAction.deleteCategoryAndTransactions) {
+      await ref
+          .read(appStateProvider.notifier)
+          .deleteCategoryWithTransactions(category);
+    } else {
+      try {
+        await ref.read(appStateProvider.notifier).deleteCategory(category);
+      } on LinkedEntityException catch (error) {
+        if (!context.mounted) {
+          return;
+        }
+
+        await showDialog<void>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Category in use'),
+              content: Text(error.message),
+              actions: [
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
         return;
       }
-
-      await showDialog<void>(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Category in use'),
-            content: Text(error.message),
-            actions: [
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
-      return;
     }
 
     if (!context.mounted) {
@@ -121,9 +153,11 @@ class CategoryDetailPage extends ConsumerWidget {
         ? AppColors.incomeSurface
         : AppColors.expenseSurface;
     final iconColor = isIncome ? AppColors.income : AppColors.iconMuted;
-    final totalAmount = relatedTransactions.fold<double>(
-      0,
-      (sum, transaction) => sum + transaction.amount,
+    final convertedTotalAmount = state.totalForTransactions(
+      relatedTransactions,
+    );
+    final missingConversionCount = state.missingConversionCountForTransactions(
+      relatedTransactions,
     );
 
     return Scaffold(
@@ -222,8 +256,13 @@ class CategoryDetailPage extends ConsumerWidget {
                   const SizedBox(height: 12),
                   _DetailTile(
                     icon: Icons.savings_outlined,
-                    label: 'Total tracked',
-                    value: formatCurrency(totalAmount),
+                    label: missingConversionCount == 0
+                        ? 'Total tracked'
+                        : 'Total tracked (partial)',
+                    value: formatCurrency(
+                      convertedTotalAmount,
+                      currencyCode: state.settings.defaultCurrencyCode,
+                    ),
                   ),
                 ],
               ),
@@ -231,27 +270,51 @@ class CategoryDetailPage extends ConsumerWidget {
             const SizedBox(height: 16),
             _SectionCard(
               title: 'Recent activity',
-              child: relatedTransactions.isEmpty
-                  ? Text(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (relatedTransactions.isEmpty)
+                    Text(
                       'No transactions are using this category yet.',
                       style: theme.textTheme.bodyLarge?.copyWith(
                         color: AppColors.textSecondary,
                       ),
                     )
-                  : Column(
-                      children: relatedTransactions
-                          .take(5)
-                          .map(
-                            (transaction) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _RecentTransactionTile(
-                                title: transaction.title,
-                                amount: formatCurrency(transaction.amount),
+                  else
+                    ...relatedTransactions
+                        .take(5)
+                        .map(
+                          (transaction) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _RecentTransactionTile(
+                              title: transaction.title,
+                              amount: formatCurrency(
+                                state.convertedAmountForTransaction(
+                                      transaction.id,
+                                    ) ??
+                                    transaction.amount,
+                                currencyCode:
+                                    state.convertedAmountForTransaction(
+                                          transaction.id,
+                                        ) !=
+                                        null
+                                    ? state.settings.defaultCurrencyCode
+                                    : transaction.currencyCode,
                               ),
                             ),
-                          )
-                          .toList(growable: false),
+                          ),
+                        ),
+                  if (missingConversionCount > 0) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      '$missingConversionCount transaction${missingConversionCount == 1 ? '' : 's'} excluded because exchange rates were unavailable.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
+                  ],
+                ],
+              ),
             ),
             const SizedBox(height: 16),
             Row(

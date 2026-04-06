@@ -25,8 +25,36 @@ class AddTransactionPage extends ConsumerStatefulWidget {
     this.exchangeRateService = const ExchangeRateService(),
     this.initialTransaction,
     this.initialCreditCardAccount,
+    this.initialAccount,
+    this.initialSourceAccount,
+    this.initialDestinationAccount,
     this.startAsCreditCardPayment = false,
+    this.startAsTransfer = false,
   });
+
+  const AddTransactionPage.forAccount({
+    super.key,
+    this.exchangeRateService = const ExchangeRateService(),
+    required Account account,
+  }) : initialTransaction = null,
+       initialCreditCardAccount = null,
+       initialAccount = account,
+       initialSourceAccount = null,
+       initialDestinationAccount = null,
+       startAsCreditCardPayment = false,
+       startAsTransfer = false;
+
+  const AddTransactionPage.transferFromAccount({
+    super.key,
+    this.exchangeRateService = const ExchangeRateService(),
+    required Account account,
+  }) : initialTransaction = null,
+       initialCreditCardAccount = null,
+       initialAccount = null,
+       initialSourceAccount = account,
+       initialDestinationAccount = null,
+       startAsCreditCardPayment = false,
+       startAsTransfer = true;
 
   const AddTransactionPage.creditCardPayment({
     super.key,
@@ -34,12 +62,20 @@ class AddTransactionPage extends ConsumerStatefulWidget {
     this.initialTransaction,
     required Account creditCardAccount,
   }) : initialCreditCardAccount = creditCardAccount,
-       startAsCreditCardPayment = true;
+       initialAccount = null,
+       initialSourceAccount = null,
+       initialDestinationAccount = creditCardAccount,
+       startAsCreditCardPayment = true,
+       startAsTransfer = false;
 
   final ExchangeRateService exchangeRateService;
   final TransactionItem? initialTransaction;
   final Account? initialCreditCardAccount;
+  final Account? initialAccount;
+  final Account? initialSourceAccount;
+  final Account? initialDestinationAccount;
   final bool startAsCreditCardPayment;
+  final bool startAsTransfer;
 
   @override
   ConsumerState<AddTransactionPage> createState() => _AddTransactionPageState();
@@ -121,7 +157,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
               .toStringAsFixed(2),
     );
     _lastFormattedAmountText = _amountController.text;
-    _type = widget.startAsCreditCardPayment
+    _type = widget.startAsCreditCardPayment || widget.startAsTransfer
         ? TransactionType.transfer
         : initialTransaction?.type ?? TransactionType.expense;
     _nameController.addListener(_handleFieldChange);
@@ -188,7 +224,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
   Account? _resolveSelectedAccount(List<Account> accounts) {
     final selectedAccount =
-        _selectedAccount ?? _accountFromInitialTransaction(accounts);
+        _selectedAccount ??
+        _accountById(accounts, widget.initialAccount?.id) ??
+        _accountFromInitialTransaction(accounts);
 
     if (selectedAccount != null) {
       for (final account in accounts) {
@@ -230,6 +268,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     );
     final selectedAccount =
         _selectedSourceAccount ??
+        _accountById(accounts, widget.initialSourceAccount?.id) ??
         _accountById(accounts, widget.initialTransaction?.sourceAccountId);
 
     if (selectedAccount != null) {
@@ -251,6 +290,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
     final selectedAccount =
         _selectedDestinationAccount ??
+        _accountById(accounts, widget.initialDestinationAccount?.id) ??
         _accountById(accounts, widget.initialTransaction?.destinationAccountId);
 
     if (selectedAccount != null) {

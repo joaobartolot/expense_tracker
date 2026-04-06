@@ -11,6 +11,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum _CategoryListAction { edit, delete }
 
+enum _CategoryDeletionAction {
+  deleteCategoryOnly,
+  deleteCategoryAndTransactions,
+}
+
 class CategoriesPage extends ConsumerWidget {
   const CategoriesPage({super.key});
 
@@ -74,31 +79,59 @@ class CategoriesPage extends ConsumerWidget {
     WidgetRef ref,
     CategoryItem category,
   ) async {
-    final didConfirm = await showDialog<bool>(
+    final state = ref.read(appStateProvider);
+    final linkedTransactions = state.transactionsForCategory(category.id);
+    final deletionAction = await showDialog<_CategoryDeletionAction>(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('Delete category?'),
-          content: const Text('This category will be removed from your list.'),
+          content: Text(
+            linkedTransactions.isEmpty
+                ? 'This category will be removed from your list.'
+                : 'This category has ${linkedTransactions.length} linked transaction${linkedTransactions.length == 1 ? '' : 's'}. Delete the category only if you also want to remove those transactions.',
+          ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: () => Navigator.of(context).pop(),
               child: const Text('Cancel'),
             ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.danger,
-                foregroundColor: AppColors.white,
+            if (linkedTransactions.isEmpty)
+              FilledButton(
+                onPressed: () => Navigator.of(
+                  context,
+                ).pop(_CategoryDeletionAction.deleteCategoryOnly),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                  foregroundColor: AppColors.white,
+                ),
+                child: const Text('Delete'),
+              )
+            else
+              FilledButton(
+                onPressed: () => Navigator.of(
+                  context,
+                ).pop(_CategoryDeletionAction.deleteCategoryAndTransactions),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                  foregroundColor: AppColors.white,
+                ),
+                child: const Text('Delete all'),
               ),
-              child: const Text('Delete'),
-            ),
           ],
         );
       },
     );
 
-    if (didConfirm != true || !context.mounted) {
+    if (deletionAction == null || !context.mounted) {
+      return;
+    }
+
+    if (deletionAction ==
+        _CategoryDeletionAction.deleteCategoryAndTransactions) {
+      await ref
+          .read(appStateProvider.notifier)
+          .deleteCategoryWithTransactions(category);
       return;
     }
 

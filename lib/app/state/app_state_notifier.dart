@@ -144,6 +144,19 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
     );
   }
 
+  void updateAccountSelectedPeriod(String accountId, DateTime date) {
+    state = _stateFactory.rebuildDerivedState(
+      state,
+      accountSelectedPeriods: {
+        ...state.accountSelectedPeriods,
+        accountId: SelectedPeriod.containing(
+          date: date,
+          financialCycleDay: state.settings.financialCycleDay,
+        ),
+      },
+    );
+  }
+
   void updateHistoryFilter(TransactionHistoryFilter filter) {
     state = _stateFactory.rebuildDerivedState(state, historyFilter: filter);
   }

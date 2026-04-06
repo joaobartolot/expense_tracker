@@ -62,6 +62,48 @@ class ActivitySummary {
   final int missingConversionCount;
 }
 
+class AccountTransferSummary {
+  const AccountTransferSummary({
+    required this.incoming,
+    required this.outgoing,
+    required this.netMovement,
+    required this.transferCount,
+  });
+
+  const AccountTransferSummary.empty()
+    : incoming = 0,
+      outgoing = 0,
+      netMovement = 0,
+      transferCount = 0;
+
+  final double incoming;
+  final double outgoing;
+  final double netMovement;
+  final int transferCount;
+}
+
+class AccountOverview {
+  const AccountOverview({
+    required this.account,
+    required this.balance,
+    required this.creditCardState,
+    required this.selectedPeriod,
+    required this.periodSummary,
+    required this.periodTransferSummary,
+    required this.periodTransactions,
+    required this.allTransactions,
+  });
+
+  final Account account;
+  final double balance;
+  final CreditCardAccountState? creditCardState;
+  final SelectedPeriod selectedPeriod;
+  final ActivitySummary periodSummary;
+  final AccountTransferSummary periodTransferSummary;
+  final List<TransactionItem> periodTransactions;
+  final List<TransactionItem> allTransactions;
+}
+
 class AppStateSnapshot {
   const AppStateSnapshot({
     required this.hasLoaded,
@@ -83,6 +125,8 @@ class AppStateSnapshot {
     required this.selectedPeriod,
     required this.periodTransactions,
     required this.periodSummary,
+    required this.accountSelectedPeriods,
+    required this.accountOverviews,
     required this.historyFilter,
     required this.historySort,
     required this.historySearchQuery,
@@ -113,6 +157,8 @@ class AppStateSnapshot {
       ),
       periodTransactions: const [],
       periodSummary: const ActivitySummary.empty(),
+      accountSelectedPeriods: const {},
+      accountOverviews: const {},
       historyFilter: TransactionHistoryFilter.all,
       historySort: TransactionHistorySort.newestFirst,
       historySearchQuery: '',
@@ -139,6 +185,8 @@ class AppStateSnapshot {
   final SelectedPeriod selectedPeriod;
   final List<TransactionItem> periodTransactions;
   final ActivitySummary periodSummary;
+  final Map<String, SelectedPeriod> accountSelectedPeriods;
+  final Map<String, AccountOverview> accountOverviews;
   final TransactionHistoryFilter historyFilter;
   final TransactionHistorySort historySort;
   final String historySearchQuery;
@@ -180,6 +228,14 @@ class AppStateSnapshot {
 
   CreditCardAccountState? creditCardStateForAccount(String accountId) {
     return creditCardStates[accountId];
+  }
+
+  SelectedPeriod selectedPeriodForAccount(String accountId) {
+    return accountSelectedPeriods[accountId] ?? selectedPeriod;
+  }
+
+  AccountOverview? accountOverviewFor(String accountId) {
+    return accountOverviews[accountId];
   }
 
   double? convertedAmountForTransaction(String transactionId) {
@@ -260,6 +316,8 @@ class AppStateSnapshot {
     SelectedPeriod? selectedPeriod,
     List<TransactionItem>? periodTransactions,
     ActivitySummary? periodSummary,
+    Map<String, SelectedPeriod>? accountSelectedPeriods,
+    Map<String, AccountOverview>? accountOverviews,
     TransactionHistoryFilter? historyFilter,
     TransactionHistorySort? historySort,
     String? historySearchQuery,
@@ -289,6 +347,9 @@ class AppStateSnapshot {
       selectedPeriod: selectedPeriod ?? this.selectedPeriod,
       periodTransactions: periodTransactions ?? this.periodTransactions,
       periodSummary: periodSummary ?? this.periodSummary,
+      accountSelectedPeriods:
+          accountSelectedPeriods ?? this.accountSelectedPeriods,
+      accountOverviews: accountOverviews ?? this.accountOverviews,
       historyFilter: historyFilter ?? this.historyFilter,
       historySort: historySort ?? this.historySort,
       historySearchQuery: historySearchQuery ?? this.historySearchQuery,

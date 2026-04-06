@@ -28,13 +28,17 @@ class CategoryTypeSummaryPage extends ConsumerWidget {
     final filteredTransactions = transactions
         .where((transaction) => transaction.type == _toTransactionType(type))
         .toList(growable: false);
-    final totalAmount = filteredTransactions.fold<double>(
-      0,
-      (sum, transaction) => sum + transaction.amount,
+    final convertedTotalAmount = state.totalForTransactions(
+      filteredTransactions,
     );
-    final averageAmount = filteredTransactions.isEmpty
+    final missingConversionCount = state.missingConversionCountForTransactions(
+      filteredTransactions,
+    );
+    final convertedTransactionCount =
+        filteredTransactions.length - missingConversionCount;
+    final averageAmount = convertedTransactionCount == 0
         ? 0.0
-        : totalAmount / filteredTransactions.length;
+        : convertedTotalAmount / convertedTransactionCount;
     final activeCategoryIds = filteredTransactions
         .map((transaction) => transaction.categoryId)
         .whereType<String>()
@@ -99,7 +103,10 @@ class CategoryTypeSummaryPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    formatCurrency(totalAmount),
+                    formatCurrency(
+                      convertedTotalAmount,
+                      currencyCode: state.settings.defaultCurrencyCode,
+                    ),
                     style: theme.textTheme.displaySmall?.copyWith(
                       color: accentColor,
                       fontWeight: FontWeight.w700,
@@ -115,6 +122,15 @@ class CategoryTypeSummaryPage extends ConsumerWidget {
                       color: AppColors.textSecondary,
                     ),
                   ),
+                  if (missingConversionCount > 0) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      '$missingConversionCount transaction${missingConversionCount == 1 ? '' : 's'} excluded because exchange rates were unavailable.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -138,7 +154,10 @@ class CategoryTypeSummaryPage extends ConsumerWidget {
                   _DetailTile(
                     icon: Icons.equalizer_rounded,
                     label: 'Average amount',
-                    value: formatCurrency(averageAmount),
+                    value: formatCurrency(
+                      averageAmount,
+                      currencyCode: state.settings.defaultCurrencyCode,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   _DetailTile(
