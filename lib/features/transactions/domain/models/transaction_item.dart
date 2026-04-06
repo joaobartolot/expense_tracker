@@ -44,6 +44,12 @@ class TransactionItem {
 
   bool get isIncomeOrExpense => !isTransfer;
 
+  bool get requiresCategory => !isTransfer;
+
+  String? get primaryAccountId => isTransfer ? sourceAccountId : accountId;
+
+  String? get secondaryAccountId => isTransfer ? destinationAccountId : null;
+
   Iterable<String> get linkedAccountIds sync* {
     if (isTransfer) {
       if (_hasValue(sourceAccountId)) {
@@ -184,10 +190,16 @@ class TransactionItem {
     required String? destinationAccountId,
   }) {
     if (type == TransactionType.transfer) {
-      return _hasValue(sourceAccountId) && _hasValue(destinationAccountId);
+      return !_hasValue(categoryId) &&
+          !_hasValue(accountId) &&
+          _hasValue(sourceAccountId) &&
+          _hasValue(destinationAccountId);
     }
 
-    return _hasValue(categoryId) && _hasValue(accountId);
+    return _hasValue(categoryId) &&
+        _hasValue(accountId) &&
+        !_hasValue(sourceAccountId) &&
+        !_hasValue(destinationAccountId);
   }
 
   static bool _hasValue(String? value) => value != null && value.isNotEmpty;

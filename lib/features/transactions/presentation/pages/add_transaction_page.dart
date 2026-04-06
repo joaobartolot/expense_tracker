@@ -177,9 +177,13 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     }
 
     final sourceAccountId = _selectedSourceAccount?.id;
-    return accounts
-        .where((account) => account.id != sourceAccountId)
-        .firstOrNull;
+    for (final account in accounts) {
+      if (account.id != sourceAccountId) {
+        return account;
+      }
+    }
+
+    return null;
   }
 
   Account? _accountById(List<Account> accounts, String? accountId) {
@@ -189,6 +193,16 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
     for (final account in accounts) {
       if (account.id == accountId) {
+        return account;
+      }
+    }
+
+    return null;
+  }
+
+  Account? _firstDifferentAccount(String? excludedAccountId) {
+    for (final account in _accounts) {
+      if (account.id != excludedAccountId) {
         return account;
       }
     }
@@ -280,6 +294,28 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
   List<CategoryItem> get _availableCategories =>
       _availableCategoriesFrom(_categories);
+
+  List<Account> get _availableSourceAccounts {
+    final destinationAccountId = _selectedDestinationAccount?.id;
+    if (destinationAccountId == null) {
+      return _accounts;
+    }
+
+    return _accounts
+        .where((account) => account.id != destinationAccountId)
+        .toList(growable: false);
+  }
+
+  List<Account> get _availableDestinationAccounts {
+    final sourceAccountId = _selectedSourceAccount?.id;
+    if (sourceAccountId == null) {
+      return _accounts;
+    }
+
+    return _accounts
+        .where((account) => account.id != sourceAccountId)
+        .toList(growable: false);
+  }
 
   List<CategoryItem> _availableCategoriesFrom(List<CategoryItem> categories) {
     if (_type == TransactionType.transfer) {
@@ -651,9 +687,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
         _exchangeRateValue = 1;
         _exchangeRateErrorMessage = null;
         _selectedSourceAccount ??= _selectedAccount ?? _accounts.firstOrNull;
-        _selectedDestinationAccount ??= _accounts
-            .where((account) => account.id != _selectedSourceAccount?.id)
-            .firstOrNull;
+        _selectedDestinationAccount ??= _firstDifferentAccount(
+          _selectedSourceAccount?.id,
+        );
       } else {
         _selectedAccount ??= _selectedSourceAccount ?? _accounts.firstOrNull;
       }
@@ -667,6 +703,26 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     final showAccountSelector = _accounts.length > 1;
     final isTransfer = _type == TransactionType.transfer;
     final accountItems = _accounts
+        .map(
+          (account) => DropdownSelectorItem<Account>(
+            value: account,
+            label: account.name,
+            subtitle: account.typeLabel,
+            icon: account.icon,
+          ),
+        )
+        .toList(growable: false);
+    final sourceAccountItems = _availableSourceAccounts
+        .map(
+          (account) => DropdownSelectorItem<Account>(
+            value: account,
+            label: account.name,
+            subtitle: account.typeLabel,
+            icon: account.icon,
+          ),
+        )
+        .toList(growable: false);
+    final destinationAccountItems = _availableDestinationAccounts
         .map(
           (account) => DropdownSelectorItem<Account>(
             value: account,
@@ -813,15 +869,14 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                         label: 'From account',
                         hintText: 'Choose a source account',
                         value: _selectedSourceAccount,
-                        items: accountItems,
+                        items: sourceAccountItems,
                         errorText: _sourceAccountError,
                         onChanged: (account) {
                           setState(() {
                             _selectedSourceAccount = account;
                             if (_selectedDestinationAccount?.id == account.id) {
-                              _selectedDestinationAccount = _accounts
-                                  .where((item) => item.id != account.id)
-                                  .firstOrNull;
+                              _selectedDestinationAccount =
+                                  _firstDifferentAccount(account.id);
                             }
                           });
                         },
@@ -831,11 +886,16 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                         label: 'To account',
                         hintText: 'Choose a destination account',
                         value: _selectedDestinationAccount,
-                        items: accountItems,
+                        items: destinationAccountItems,
                         errorText: _destinationAccountError,
                         onChanged: (account) {
                           setState(() {
                             _selectedDestinationAccount = account;
+                            if (_selectedSourceAccount?.id == account.id) {
+                              _selectedSourceAccount = _firstDifferentAccount(
+                                account.id,
+                              );
+                            }
                           });
                         },
                       ),

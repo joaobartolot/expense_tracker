@@ -401,15 +401,10 @@ class _TransactionHistoryPageState
                       : state.categoryById(transaction.categoryId)?.icon ??
                             Icons.sell_outlined,
                   accountNameFor: (transaction) =>
-                      state
-                          .accountById(
-                            transaction.accountId ??
-                                transaction.sourceAccountId,
-                          )
-                          ?.name ??
+                      state.accountById(transaction.primaryAccountId)?.name ??
                       'Unknown account',
                   destinationAccountNameFor: (transaction) =>
-                      state.accountById(transaction.destinationAccountId)?.name,
+                      state.accountById(transaction.secondaryAccountId)?.name,
                   onTransactionTap: _openTransactionDetails,
                   onTransactionLongPressStart: _showTransactionActionMenu,
                 ),

@@ -147,10 +147,10 @@ class HiveTransactionRepository implements TransactionRepository {
     }
 
     if (transaction.isTransfer) {
-      final sourceAccountId = transaction.sourceAccountId;
-      final destinationAccountId = transaction.destinationAccountId;
+      final sourceAccountId = transaction.sourceAccountId?.trim();
+      final destinationAccountId = transaction.destinationAccountId?.trim();
 
-      if (sourceAccountId == null || destinationAccountId == null) {
+      if (!_hasValue(sourceAccountId) || !_hasValue(destinationAccountId)) {
         throw const TransactionValidationException(
           'Transfers require a source and destination account.',
         );
@@ -162,13 +162,30 @@ class HiveTransactionRepository implements TransactionRepository {
         );
       }
 
+      if (_hasValue(transaction.accountId) ||
+          _hasValue(transaction.categoryId)) {
+        throw const TransactionValidationException(
+          'Transfers cannot keep income or expense account/category fields.',
+        );
+      }
+
       return;
     }
 
-    if (transaction.accountId == null || transaction.categoryId == null) {
+    if (!_hasValue(transaction.accountId) ||
+        !_hasValue(transaction.categoryId)) {
       throw const TransactionValidationException(
         'Income and expense transactions require an account and category.',
       );
     }
+
+    if (_hasValue(transaction.sourceAccountId) ||
+        _hasValue(transaction.destinationAccountId)) {
+      throw const TransactionValidationException(
+        'Income and expense transactions cannot keep transfer account fields.',
+      );
+    }
   }
+
+  bool _hasValue(String? value) => value != null && value.trim().isNotEmpty;
 }

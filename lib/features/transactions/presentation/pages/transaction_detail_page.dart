@@ -102,10 +102,10 @@ class TransactionDetailPage extends ConsumerWidget {
 
     final theme = Theme.of(context);
     final category = state.categoryById(transaction.categoryId);
-    final account = state.accountById(transaction.accountId);
+    final account = state.accountById(transaction.primaryAccountId);
     final sourceAccount = state.accountById(transaction.sourceAccountId);
     final destinationAccount = state.accountById(
-      transaction.destinationAccountId,
+      transaction.secondaryAccountId,
     );
     final isIncome = transaction.type == TransactionType.income;
     final isTransfer = transaction.type == TransactionType.transfer;

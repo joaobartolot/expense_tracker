@@ -151,11 +151,9 @@ class AppStateFactory {
           }
 
           final category = categoriesById[transaction.categoryId];
-          final account =
-              accountsById[transaction.accountId ??
-                  transaction.sourceAccountId];
+          final account = accountsById[transaction.primaryAccountId];
           final destinationAccount =
-              accountsById[transaction.destinationAccountId];
+              accountsById[transaction.secondaryAccountId];
           final searchableText = [
             transaction.title,
             category?.name,
