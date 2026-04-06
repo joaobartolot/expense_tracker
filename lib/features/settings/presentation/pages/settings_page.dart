@@ -3,6 +3,7 @@ import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/supported_currencies.dart';
 import 'package:expense_tracker/core/widgets/app_text_input.dart';
 import 'package:expense_tracker/core/widgets/custom_dropdown_selector.dart';
+import 'package:expense_tracker/core/widgets/day_of_month_picker_field.dart';
 import 'package:expense_tracker/core/widgets/primary_action_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,8 +20,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   late final TextEditingController _nameController;
   late String _selectedCurrencyCode;
+  late int _financialCycleDay;
   String? _nameErrorText;
   bool _isSaving = false;
+  bool _isSavingMonthStart = false;
 
   @override
   void initState() {
@@ -28,6 +31,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final settings = ref.read(appStateProvider).settings;
     _nameController = TextEditingController(text: settings.displayName);
     _selectedCurrencyCode = settings.defaultCurrencyCode;
+    _financialCycleDay = settings.financialCycleDay;
   }
 
   @override
@@ -74,6 +78,27 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     ).showSnackBar(const SnackBar(content: Text('Settings updated.')));
   }
 
+  Future<void> _updateFinancialCycleDay(int day) async {
+    if (_financialCycleDay == day || _isSavingMonthStart) {
+      return;
+    }
+
+    setState(() {
+      _financialCycleDay = day;
+      _isSavingMonthStart = true;
+    });
+
+    await ref.read(appStateProvider.notifier).updateFinancialCycleDay(day);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isSavingMonthStart = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(appStateProvider);
@@ -111,7 +136,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Keep the app personal and set the default currency for new entries.',
+            'Keep the app personal, choose the default currency, and decide when your month starts.',
             style: theme.textTheme.bodyLarge?.copyWith(
               color: colors.textSecondary,
             ),
@@ -132,6 +157,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 Text(
                   previewGreeting.greeting,
                   style: theme.textTheme.bodyLarge?.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                DayOfMonthPickerField(
+                  label: 'Month start',
+                  dialogTitle: 'Choose month start',
+                  dialogDescription:
+                      'Pick the day your month begins. Shorter months use the closest available date.',
+                  value: _financialCycleDay,
+                  valueLabel: 'Day $_financialCycleDay',
+                  onChanged: _updateFinancialCycleDay,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  _isSavingMonthStart
+                      ? 'Updating your month...'
+                      : 'Your summaries and monthly totals update as soon as you change this.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: colors.textSecondary,
                   ),
                 ),

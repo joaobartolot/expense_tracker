@@ -1,3 +1,4 @@
+import 'package:expense_tracker/core/utils/financial_period.dart';
 import 'package:expense_tracker/features/accounts/domain/models/account.dart';
 import 'package:expense_tracker/features/accounts/domain/models/credit_card_account_state.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
@@ -9,18 +10,32 @@ enum TransactionHistorySort { newestFirst, oldestFirst }
 enum TransactionHistoryFilter { all, income, expense, transfer }
 
 class SelectedPeriod {
-  const SelectedPeriod({required this.start, required this.end});
+  const SelectedPeriod({
+    required this.start,
+    required this.end,
+    required this.financialCycleDay,
+  });
 
-  factory SelectedPeriod.monthContaining(DateTime date) {
-    final normalized = DateTime(date.year, date.month);
+  factory SelectedPeriod.containing({
+    required DateTime date,
+    required int financialCycleDay,
+  }) {
+    final period = FinancialPeriod.containing(
+      date: date,
+      financialCycleDay: financialCycleDay,
+    );
     return SelectedPeriod(
-      start: normalized,
-      end: DateTime(normalized.year, normalized.month + 1),
+      start: period.start,
+      end: period.end,
+      financialCycleDay: period.financialCycleDay,
     );
   }
 
   final DateTime start;
   final DateTime end;
+  final int financialCycleDay;
+
+  DateTime get inclusiveEnd => end.subtract(const Duration(days: 1));
 
   bool contains(DateTime value) {
     return !value.isBefore(start) && value.isBefore(end);
@@ -92,7 +107,10 @@ class AppStateSnapshot {
       missingGlobalBalanceConversionCount: 0,
       asOfDate: DateTime.now(),
       creditCardStates: const {},
-      selectedPeriod: SelectedPeriod.monthContaining(DateTime.now()),
+      selectedPeriod: SelectedPeriod.containing(
+        date: DateTime.now(),
+        financialCycleDay: settings.financialCycleDay,
+      ),
       periodTransactions: const [],
       periodSummary: const ActivitySummary.empty(),
       historyFilter: TransactionHistoryFilter.all,

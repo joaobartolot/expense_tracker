@@ -5,11 +5,13 @@ class AppSettings {
     required this.displayName,
     required this.themePreference,
     required this.defaultCurrencyCode,
+    required this.financialCycleDay,
   });
 
   final String displayName;
   final AppThemePreference themePreference;
   final String defaultCurrencyCode;
+  final int financialCycleDay;
 
   String get greeting {
     final trimmedName = displayName.trim();
@@ -24,11 +26,13 @@ class AppSettings {
     String? displayName,
     AppThemePreference? themePreference,
     String? defaultCurrencyCode,
+    int? financialCycleDay,
   }) {
     return AppSettings(
       displayName: displayName ?? this.displayName,
       themePreference: themePreference ?? this.themePreference,
       defaultCurrencyCode: defaultCurrencyCode ?? this.defaultCurrencyCode,
+      financialCycleDay: financialCycleDay ?? this.financialCycleDay,
     );
   }
 
@@ -37,6 +41,7 @@ class AppSettings {
       'displayName': displayName,
       'themePreference': themePreference.storageValue,
       'defaultCurrencyCode': defaultCurrencyCode,
+      'financialCycleDay': financialCycleDay,
     };
   }
 
@@ -52,6 +57,11 @@ class AppSettings {
           (normalizedMap['defaultCurrencyCode'] as String? ?? 'EUR')
               .trim()
               .toUpperCase(),
+      financialCycleDay:
+          ((normalizedMap['financialCycleDay'] as num?)?.toInt() ?? 1).clamp(
+            1,
+            31,
+          ),
     );
   }
 }

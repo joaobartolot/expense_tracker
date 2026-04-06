@@ -8,5 +8,6 @@ abstract class SettingsRepository {
   ValueListenable<Box<dynamic>> listenable();
   Future<void> updateDisplayName(String name);
   Future<void> updateDefaultCurrencyCode(String code);
+  Future<void> updateFinancialCycleDay(int day);
   Future<void> updateThemePreference(AppThemePreference preference);
 }

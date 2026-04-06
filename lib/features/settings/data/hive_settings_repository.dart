@@ -38,6 +38,15 @@ class HiveSettingsRepository implements SettingsRepository {
   }
 
   @override
+  Future<void> updateFinancialCycleDay(int day) async {
+    final settings = getSettings();
+    await _box.put(
+      HiveStorage.settingsKey,
+      settings.copyWith(financialCycleDay: day.clamp(1, 31)).toMap(),
+    );
+  }
+
+  @override
   Future<void> updateThemePreference(AppThemePreference preference) async {
     final settings = getSettings();
     await _box.put(

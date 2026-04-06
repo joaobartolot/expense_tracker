@@ -137,7 +137,10 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
   void updateSelectedPeriod(DateTime date) {
     state = _stateFactory.rebuildDerivedState(
       state,
-      selectedPeriod: SelectedPeriod.monthContaining(date),
+      selectedPeriod: SelectedPeriod.containing(
+        date: date,
+        financialCycleDay: state.settings.financialCycleDay,
+      ),
     );
   }
 
@@ -245,6 +248,10 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
   }) async {
     await _settingsRepository.updateDisplayName(displayName);
     await _settingsRepository.updateDefaultCurrencyCode(defaultCurrencyCode);
+  }
+
+  Future<void> updateFinancialCycleDay(int day) {
+    return _settingsRepository.updateFinancialCycleDay(day);
   }
 
   TransactionItem? _transactionForId(String transactionId) {

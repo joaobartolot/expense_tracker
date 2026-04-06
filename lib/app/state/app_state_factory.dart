@@ -33,6 +33,11 @@ class AppStateFactory {
     DateTime? now,
   }) async {
     final currentDate = now ?? DateTime.now();
+    final selectedPeriod = _resolveSelectedPeriod(
+      previous: previous,
+      settings: settings,
+      currentDate: currentDate,
+    );
     final accountsById = {for (final account in accounts) account.id: account};
     final categoriesById = {
       for (final category in categories) category.id: category,
@@ -66,9 +71,7 @@ class AppStateFactory {
           currentRates: currentRates,
         );
     final periodTransactions = transactions
-        .where(
-          (transaction) => previous.selectedPeriod.contains(transaction.date),
-        )
+        .where((transaction) => selectedPeriod.contains(transaction.date))
         .toList(growable: false);
     final creditCardStates = _creditCardOverviewService.buildStates(
       accounts: accounts,
@@ -96,7 +99,7 @@ class AppStateFactory {
           balanceOverview.missingAccountIds.length,
       asOfDate: currentDate,
       creditCardStates: creditCardStates,
-      selectedPeriod: previous.selectedPeriod,
+      selectedPeriod: selectedPeriod,
       periodTransactions: periodTransactions,
       periodSummary: _buildActivitySummary(
         periodTransactions,
@@ -151,6 +154,25 @@ class AppStateFactory {
         sort: nextSort,
         query: nextQuery,
       ),
+    );
+  }
+
+  SelectedPeriod _resolveSelectedPeriod({
+    required AppStateSnapshot previous,
+    required AppSettings settings,
+    required DateTime currentDate,
+  }) {
+    final currentPeriod = SelectedPeriod.containing(
+      date: currentDate,
+      financialCycleDay: settings.financialCycleDay,
+    );
+    if (!previous.hasLoaded) {
+      return currentPeriod;
+    }
+
+    return SelectedPeriod.containing(
+      date: previous.selectedPeriod.start,
+      financialCycleDay: settings.financialCycleDay,
     );
   }
 

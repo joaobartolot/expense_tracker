@@ -1,4 +1,5 @@
 import 'package:expense_tracker/app/state/app_state_provider.dart';
+import 'package:expense_tracker/core/utils/financial_period.dart';
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/date_label_formatter.dart';
 import 'package:expense_tracker/core/widgets/context_action_menu.dart';
@@ -11,7 +12,6 @@ import 'package:expense_tracker/features/transactions/presentation/widgets/balan
 import 'package:expense_tracker/features/transactions/presentation/widgets/transaction_group.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 enum _TransactionListAction { edit, delete }
 
@@ -178,9 +178,11 @@ class HomePage extends ConsumerWidget {
     final theme = Theme.of(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final groupedTransactions = _groupTransactions(state.periodTransactions);
-    final periodLabel = DateFormat(
-      'MMMM yyyy',
-    ).format(state.selectedPeriod.start);
+    final periodLabel = FinancialPeriod(
+      start: state.selectedPeriod.start,
+      end: state.selectedPeriod.end,
+      financialCycleDay: state.selectedPeriod.financialCycleDay,
+    ).formatRangeLabel();
 
     return SafeArea(
       child: ListView(
@@ -243,7 +245,7 @@ class HomePage extends ConsumerWidget {
                 ? AppColors.income
                 : AppColors.dangerDark,
             backgroundColor: Colors.white,
-            subtitle: 'For $periodLabel',
+            subtitle: periodLabel,
           ),
           const SizedBox(height: 28),
           Row(
