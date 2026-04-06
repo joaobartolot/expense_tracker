@@ -9,7 +9,7 @@ class Account {
     required this.id,
     required this.name,
     required this.type,
-    required this.balance,
+    required this.openingBalance,
     required this.currencyCode,
     this.isPrimary = false,
     this.description = '',
@@ -20,7 +20,7 @@ class Account {
   final String id;
   final String name;
   final AccountType type;
-  final double balance;
+  final double openingBalance;
   final String currencyCode;
   final bool isPrimary;
   final String description;
@@ -55,7 +55,7 @@ class Account {
       'id': id,
       'name': name,
       'type': type.name,
-      'balance': balance,
+      'openingBalance': openingBalance,
       'currencyCode': currencyCode,
       'isPrimary': isPrimary,
       'description': description,
@@ -69,7 +69,10 @@ class Account {
       id: map['id'] as String? ?? '',
       name: map['name'] as String? ?? '',
       type: _accountTypeFromName(map['type'] as String?),
-      balance: (map['balance'] as num?)?.toDouble() ?? 0,
+      openingBalance:
+          (map['openingBalance'] as num?)?.toDouble() ??
+          (map['balance'] as num?)?.toDouble() ??
+          0,
       currencyCode: map['currencyCode'] as String? ?? 'EUR',
       isPrimary: map['isPrimary'] as bool? ?? false,
       description: map['description'] as String? ?? '',
@@ -84,7 +87,7 @@ class Account {
     String? id,
     String? name,
     AccountType? type,
-    double? balance,
+    double? openingBalance,
     String? currencyCode,
     bool? isPrimary,
     String? description,
@@ -97,7 +100,7 @@ class Account {
       id: id ?? this.id,
       name: name ?? this.name,
       type: type ?? this.type,
-      balance: balance ?? this.balance,
+      openingBalance: openingBalance ?? this.openingBalance,
       currencyCode: currencyCode ?? this.currencyCode,
       isPrimary: isPrimary ?? this.isPrimary,
       description: description ?? this.description,

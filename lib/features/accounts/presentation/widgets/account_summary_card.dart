@@ -9,11 +9,13 @@ class AccountSummaryCard extends StatelessWidget {
     required this.totalBalance,
     required this.accountCount,
     required this.currencyCode,
+    this.missingConversionCount = 0,
   });
 
   final double totalBalance;
   final int accountCount;
   final String currencyCode;
+  final int missingConversionCount;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +24,9 @@ class AccountSummaryCard extends StatelessWidget {
     return HighlightSummaryCard(
       title: 'Tracked balance',
       value: formatCurrency(totalBalance, currencyCode: currencyCode),
-      subtitle: '$accountCount account${accountCount == 1 ? '' : 's'} tracked',
+      subtitle: missingConversionCount == 0
+          ? '$accountCount account${accountCount == 1 ? '' : 's'} tracked'
+          : '$accountCount account${accountCount == 1 ? '' : 's'} tracked • $missingConversionCount excluded',
       footer: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
@@ -39,7 +43,9 @@ class AccountSummaryCard extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'These are tracked balances, not live bank connections.',
+                missingConversionCount == 0
+                    ? 'These are tracked balances, not live bank connections.'
+                    : 'Some balances are excluded until an exchange rate is available.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: AppColors.white,
                 ),

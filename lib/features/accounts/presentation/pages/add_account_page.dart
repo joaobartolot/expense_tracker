@@ -5,6 +5,7 @@ import 'package:expense_tracker/core/utils/currency_formatter.dart';
 import 'package:expense_tracker/core/utils/supported_currencies.dart';
 import 'package:expense_tracker/core/widgets/app_text_input.dart';
 import 'package:expense_tracker/core/widgets/custom_dropdown_selector.dart';
+import 'package:expense_tracker/core/widgets/day_of_month_picker_field.dart';
 import 'package:expense_tracker/core/widgets/primary_action_button.dart';
 import 'package:expense_tracker/core/widgets/segmented_toggle_field.dart';
 import 'package:expense_tracker/features/accounts/domain/models/account.dart';
@@ -56,7 +57,7 @@ class _AddAccountPageState extends ConsumerState<AddAccountPage> {
       text: initialAccount?.description ?? '',
     );
     _balanceController = TextEditingController(
-      text: (initialAccount?.balance ?? 0).toStringAsFixed(2),
+      text: (initialAccount?.openingBalance ?? 0).toStringAsFixed(2),
     );
     _nameController.addListener(_handleFieldChange);
     _balanceController
@@ -156,7 +157,7 @@ class _AddAccountPageState extends ConsumerState<AddAccountPage> {
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
         type: _selectedType,
-        balance: _balanceValue,
+        openingBalance: _balanceValue,
         currencyCode: _selectedCurrencyCode,
         isPrimary: _isPrimaryAccount,
         creditCardDueDay: _isCreditCard ? _creditCardDueDay : null,
@@ -254,7 +255,7 @@ class _AddAccountPageState extends ConsumerState<AddAccountPage> {
                   children: [
                     Text(
                       _isEditing
-                          ? 'Update this tracked balance'
+                          ? 'Update this opening balance'
                           : 'Create a tracked account',
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w700,
@@ -272,7 +273,7 @@ class _AddAccountPageState extends ConsumerState<AddAccountPage> {
                     const SizedBox(height: 18),
                     AppTextInput(
                       label: 'Description',
-                      hintText: 'Optional notes about this balance',
+                      hintText: 'Optional notes about this account',
                       controller: _descriptionController,
                       textCapitalization: TextCapitalization.sentences,
                     ),
@@ -317,9 +318,7 @@ class _AddAccountPageState extends ConsumerState<AddAccountPage> {
                         const SizedBox(width: 16),
                         Expanded(
                           child: AppTextInput(
-                            label: _isCreditCard
-                                ? 'Current balance'
-                                : 'Opening balance',
+                            label: 'Opening balance',
                             hintText: '0.00',
                             controller: _balanceController,
                             keyboardType: const TextInputType.numberWithOptions(
@@ -466,194 +465,15 @@ class _DueDayPicker extends StatelessWidget {
   final int value;
   final ValueChanged<int> onChanged;
 
-  Future<void> _openPicker(BuildContext context) async {
-    final selectedDay = await showDialog<int>(
-      context: context,
-      builder: (context) => _DueDayDialog(selectedDay: value),
-    );
-
-    if (selectedDay != null) {
-      onChanged(selectedDay);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Payment due day',
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Material(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(24),
-          child: InkWell(
-            onTap: () => _openPicker(context),
-            borderRadius: BorderRadius.circular(24),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.border, width: 1.4),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.calendar_month_outlined,
-                      size: 18,
-                      color: AppColors.iconMuted,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Day $value',
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: AppColors.iconMuted,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DueDayDialog extends StatefulWidget {
-  const _DueDayDialog({required this.selectedDay});
-
-  final int selectedDay;
-
-  @override
-  State<_DueDayDialog> createState() => _DueDayDialogState();
-}
-
-class _DueDayDialogState extends State<_DueDayDialog> {
-  late int _pendingDay;
-
-  @override
-  void initState() {
-    super.initState();
-    _pendingDay = widget.selectedDay;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Dialog(
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Select due day',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Choose the day of the month when this card payment is due.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 20),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 31,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-              ),
-              itemBuilder: (context, index) {
-                final day = index + 1;
-                final isSelected = day == _pendingDay;
-
-                return InkWell(
-                  onTap: () {
-                    setState(() {
-                      _pendingDay = day;
-                    });
-                  },
-                  customBorder: const CircleBorder(),
-                  child: Center(
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.brand
-                            : Colors.transparent,
-                        shape: BoxShape.circle,
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '$day',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: isSelected
-                              ? AppColors.white
-                              : AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: () => Navigator.of(context).pop(_pendingDay),
-                  child: const Text('Confirm'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+    return DayOfMonthPickerField(
+      label: 'Payment due day',
+      dialogTitle: 'Select due day',
+      dialogDescription:
+          'Choose the day of the month when this card payment is due.',
+      value: value,
+      onChanged: onChanged,
     );
   }
 }
