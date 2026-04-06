@@ -160,16 +160,12 @@ class HomePage extends ConsumerWidget {
     return grouped;
   }
 
-  String _balanceSubtitle(int accountCount, int missingConversionCount) {
-    if (accountCount == 0) {
-      return 'Add an account to start tracking your balance.';
-    }
-
+  String _balanceSubtitle(String periodLabel, int missingConversionCount) {
     if (missingConversionCount > 0) {
-      return 'Across $accountCount tracked accounts. $missingConversionCount excluded until exchange rates load.';
+      return '$periodLabel • $missingConversionCount excluded until exchange rates load.';
     }
 
-    return 'Across $accountCount tracked account${accountCount == 1 ? '' : 's'}.';
+    return periodLabel;
   }
 
   @override
@@ -204,9 +200,9 @@ class HomePage extends ConsumerWidget {
           BalanceCard(
             balance: state.globalBalance,
             currencyCode: state.settings.defaultCurrencyCode,
-            title: 'Tracked balance',
+            title: 'Balance',
             subtitle: _balanceSubtitle(
-              state.accounts.length,
+              periodLabel,
               state.missingGlobalBalanceConversionCount,
             ),
           ),
@@ -220,7 +216,6 @@ class HomePage extends ConsumerWidget {
                   currencyCode: state.settings.defaultCurrencyCode,
                   accentColor: AppColors.income,
                   backgroundColor: AppColors.incomeSurface,
-                  subtitle: periodLabel,
                 ),
               ),
               const SizedBox(width: 12),
@@ -231,7 +226,6 @@ class HomePage extends ConsumerWidget {
                   currencyCode: state.settings.defaultCurrencyCode,
                   accentColor: AppColors.textPrimary,
                   backgroundColor: AppColors.expenseSurface,
-                  subtitle: periodLabel,
                 ),
               ),
             ],
@@ -245,7 +239,6 @@ class HomePage extends ConsumerWidget {
                 ? AppColors.income
                 : AppColors.dangerDark,
             backgroundColor: Colors.white,
-            subtitle: periodLabel,
           ),
           const SizedBox(height: 28),
           Row(
