@@ -24,10 +24,7 @@ class AppStateFactory {
       for (final category in categories) category.id: category,
     };
     final effectiveBalances = _balanceOverviewService
-        .calculateEffectiveBalances(
-          accounts: accounts,
-          transactions: transactions,
-        );
+        .calculateEffectiveBalances(accounts: accounts);
     final periodTransactions = transactions
         .where(
           (transaction) => previous.selectedPeriod.contains(transaction.date),
@@ -45,9 +42,7 @@ class AppStateFactory {
       accountsById: accountsById,
       categoriesById: categoriesById,
       effectiveBalances: effectiveBalances,
-      globalBalance: _balanceOverviewService.calculateGlobalBalanceFromBalances(
-        effectiveBalances,
-      ),
+      globalBalance: _balanceOverviewService.calculateGlobalBalance(accounts),
       selectedPeriod: previous.selectedPeriod,
       periodTransactions: periodTransactions,
       periodSummary: _buildActivitySummary(periodTransactions),

@@ -198,6 +198,7 @@ class HomePage extends ConsumerWidget {
           BalanceCard(
             balance: state.globalBalance,
             currencyCode: state.settings.defaultCurrencyCode,
+            title: 'Tracked balance',
             subtitle: _balanceSubtitle(state.accounts.length),
           ),
           const SizedBox(height: 16),

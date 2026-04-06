@@ -11,6 +11,7 @@ import 'package:expense_tracker/features/categories/domain/models/category_item.
 import 'package:expense_tracker/features/settings/data/settings_repository.dart';
 import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
+import 'package:expense_tracker/features/transactions/domain/services/transaction_balance_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AppStateNotifier extends Notifier<AppStateSnapshot> {
@@ -18,6 +19,7 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
   late final AccountRepository _accountRepository;
   late final CategoryRepository _categoryRepository;
   late final TransactionRepository _transactionRepository;
+  late final TransactionBalanceService _transactionBalanceService;
   late final AppStateFactory _stateFactory;
 
   int _refreshToken = 0;
@@ -30,6 +32,7 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
     _accountRepository = ref.read(accountRepositoryProvider);
     _categoryRepository = ref.read(categoryRepositoryProvider);
     _transactionRepository = ref.read(transactionRepositoryProvider);
+    _transactionBalanceService = ref.read(transactionBalanceServiceProvider);
     _stateFactory = AppStateFactory(
       balanceOverviewService: ref.read(balanceOverviewServiceProvider),
     );
@@ -166,16 +169,20 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
     TransactionItem transaction, {
     required bool isEditing,
   }) async {
-    if (isEditing) {
-      await _transactionRepository.updateTransaction(transaction);
-      return;
-    }
-
-    await _transactionRepository.addTransaction(transaction);
+    await _transactionBalanceService.saveTransaction(
+      transaction,
+      isEditing: isEditing,
+      previousTransaction: isEditing ? _transactionForId(transaction.id) : null,
+      currentAccounts: state.accounts,
+    );
   }
 
-  Future<void> deleteTransaction(String transactionId) {
-    return _transactionRepository.deleteTransaction(transactionId);
+  Future<void> deleteTransaction(String transactionId) async {
+    await _transactionBalanceService.deleteTransaction(
+      transactionId,
+      existingTransaction: _transactionForId(transactionId),
+      currentAccounts: state.accounts,
+    );
   }
 
   Future<void> saveCategory(
@@ -206,5 +213,15 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
   }) async {
     await _settingsRepository.updateDisplayName(displayName);
     await _settingsRepository.updateDefaultCurrencyCode(defaultCurrencyCode);
+  }
+
+  TransactionItem? _transactionForId(String transactionId) {
+    for (final transaction in state.transactions) {
+      if (transaction.id == transactionId) {
+        return transaction;
+      }
+    }
+
+    return null;
   }
 }
