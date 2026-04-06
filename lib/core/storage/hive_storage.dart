@@ -82,6 +82,11 @@ class HiveStorage {
       );
     }
 
+    await _migrateAccountOpeningBalances(
+      accountsBox: accountsBox,
+      transactionsBox: transactionsBox,
+    );
+
     if (settingsBox.get(settingsKey) == null) {
       await settingsBox.put(settingsKey, _initialSettings);
     }
@@ -241,12 +246,61 @@ class HiveStorage {
         id: 'b830b4ce-7fdc-4db0-86f1-d011c20da001',
         name: 'Main Bank',
         type: AccountType.bank,
-        balance: 1395.60,
+        openingBalance: 0,
         currencyCode: 'EUR',
         isPrimary: true,
         description: 'Main account for day-to-day spending and income',
       ),
     ];
+  }
+
+  static Future<void> _migrateAccountOpeningBalances({
+    required Box<dynamic> accountsBox,
+    required Box<dynamic> transactionsBox,
+  }) async {
+    final storedAccounts =
+        (accountsBox.get(accountsKey) as List<dynamic>? ?? const [])
+            .cast<Map<dynamic, dynamic>>();
+    if (storedAccounts.isEmpty ||
+        storedAccounts.every((account) => account['openingBalance'] != null)) {
+      return;
+    }
+
+    final storedTransactions =
+        (transactionsBox.get(transactionsKey) as List<dynamic>? ?? const [])
+            .cast<Map<dynamic, dynamic>>();
+    final balanceChangesByAccountId = <String, double>{};
+
+    for (final storedTransaction in storedTransactions) {
+      final transaction = TransactionItem.fromMap(storedTransaction);
+      for (final entry in transaction.balanceChanges.entries) {
+        balanceChangesByAccountId.update(
+          entry.key,
+          (value) => value + entry.value,
+          ifAbsent: () => entry.value,
+        );
+      }
+    }
+
+    final migratedAccounts = storedAccounts
+        .map((storedAccount) {
+          final map = Map<dynamic, dynamic>.from(storedAccount);
+          if (map['openingBalance'] != null) {
+            return map;
+          }
+
+          final accountId = map['id'] as String? ?? '';
+          final currentBalance = (map['balance'] as num?)?.toDouble() ?? 0;
+          final transactionDelta = balanceChangesByAccountId[accountId] ?? 0;
+
+          map['openingBalance'] = currentBalance - transactionDelta;
+          map.remove('balance');
+          return map;
+        })
+        .toList(growable: false);
+
+    await accountsBox.put(accountsKey, migratedAccounts);
+    _logger.i('Migrated stored accounts to opening balances.');
   }
 
   static Future<void> _migrateTransactions({
@@ -342,6 +396,7 @@ class HiveStorage {
               'foreignAmount': transaction['foreignAmount'],
               'foreignCurrencyCode': transaction['foreignCurrencyCode'],
               'exchangeRate': transaction['exchangeRate'],
+              'transferKind': transaction['transferKind'],
             };
           }
 
@@ -410,6 +465,7 @@ class HiveStorage {
             'foreignAmount': transaction['foreignAmount'],
             'foreignCurrencyCode': transaction['foreignCurrencyCode'],
             'exchangeRate': transaction['exchangeRate'],
+            'transferKind': transaction['transferKind'],
           };
         })
         .toList(growable: false);

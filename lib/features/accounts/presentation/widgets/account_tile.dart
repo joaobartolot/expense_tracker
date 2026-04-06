@@ -1,6 +1,7 @@
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/currency_formatter.dart';
 import 'package:expense_tracker/features/accounts/domain/models/account.dart';
+import 'package:expense_tracker/features/accounts/domain/models/credit_card_account_state.dart';
 import 'package:flutter/material.dart';
 
 enum AccountTileAction { edit, delete }
@@ -10,6 +11,8 @@ class AccountTile extends StatelessWidget {
     super.key,
     required this.account,
     required this.balance,
+    this.creditCardState,
+    this.onCreditCardPaymentTap,
     this.onTap,
     this.onLongPressStart,
     this.leading,
@@ -18,6 +21,8 @@ class AccountTile extends StatelessWidget {
 
   final Account account;
   final double balance;
+  final CreditCardAccountState? creditCardState;
+  final VoidCallback? onCreditCardPaymentTap;
   final VoidCallback? onTap;
   final GestureLongPressStartCallback? onLongPressStart;
   final Widget? leading;
@@ -27,7 +32,10 @@ class AccountTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = AppColors.of(context);
-    final isNegative = balance < 0;
+    final displayAmount = account.isCreditCard
+        ? creditCardState?.debt ?? 0
+        : balance;
+    final isNegative = !account.isCreditCard && balance < 0;
 
     return Material(
       color: colors.surface,
@@ -86,13 +94,22 @@ class AccountTile extends StatelessWidget {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            if (account.isPrimary)
-                              const _MetaChip(label: 'Main account'),
-                            if (account.creditCardDueDay case final dueDay)
-                              _MetaChip(label: 'Due day $dueDay'),
-                            if (account.paymentTrackingLabel
-                                case final String label)
-                              _MetaChip(label: label),
+                            if (creditCardState case final cardState?)
+                              _StatusChip(status: cardState.status),
+                            if (creditCardState?.nextDueDate
+                                case final nextDue?)
+                              _MetaChip(
+                                label:
+                                    'Due ${MaterialLocalizations.of(context).formatShortDate(nextDue)}',
+                              ),
+                            if (creditCardState?.paymentTracking
+                                case final tracking)
+                              _MetaChip(
+                                label:
+                                    tracking == CreditCardPaymentTracking.manual
+                                    ? 'Manual tracking'
+                                    : 'Auto tracking',
+                              ),
                           ],
                         ),
                       ] else if (account.isPrimary) ...[
@@ -108,7 +125,7 @@ class AccountTile extends StatelessWidget {
                   children: [
                     Text(
                       formatCurrency(
-                        balance,
+                        displayAmount,
                         currencyCode: account.currencyCode,
                       ),
                       style: theme.textTheme.titleMedium?.copyWith(
@@ -120,11 +137,22 @@ class AccountTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      account.currencyCode,
+                      account.isCreditCard
+                          ? 'Current debt'
+                          : account.currencyCode,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colors.textSecondary,
                       ),
                     ),
+                    if (account.isCreditCard &&
+                        onCreditCardPaymentTap != null) ...[
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: onCreditCardPaymentTap,
+                        icon: const Icon(Icons.credit_card_rounded, size: 18),
+                        label: const Text('Pay'),
+                      ),
+                    ],
                   ],
                 ),
                 if (trailing != null) ...[const SizedBox(width: 10), trailing!],
@@ -159,6 +187,52 @@ class _MetaChip extends StatelessWidget {
         style: theme.textTheme.labelMedium?.copyWith(
           color: colors.textSecondary,
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.status});
+
+  final CreditCardPaymentStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = switch (status) {
+      CreditCardPaymentStatus.paid => (
+        background: const Color(0xFFE8F6EE),
+        foreground: const Color(0xFF1C7C45),
+      ),
+      CreditCardPaymentStatus.upcoming => (
+        background: const Color(0xFFFDF2E2),
+        foreground: const Color(0xFF9A5B00),
+      ),
+      CreditCardPaymentStatus.unpaid => (
+        background: const Color(0xFFFCE8E6),
+        foreground: const Color(0xFFB3261E),
+      ),
+    };
+
+    final label = switch (status) {
+      CreditCardPaymentStatus.paid => 'Paid',
+      CreditCardPaymentStatus.upcoming => 'Upcoming',
+      CreditCardPaymentStatus.unpaid => 'Unpaid',
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: scheme.background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: scheme.foreground,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

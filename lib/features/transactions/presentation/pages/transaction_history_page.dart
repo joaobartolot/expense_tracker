@@ -390,13 +390,25 @@ class _TransactionHistoryPageState
                 (entry) => TransactionGroup(
                   label: entry.key,
                   transactions: entry.value,
+                  displayAmountFor: (transaction) =>
+                      state.convertedAmountForTransaction(transaction.id) ??
+                      transaction.amount,
+                  displayCurrencyCodeFor: (transaction) =>
+                      state.convertedAmountForTransaction(transaction.id) !=
+                          null
+                      ? state.settings.defaultCurrencyCode
+                      : transaction.currencyCode,
                   categoryNameFor: (transaction) =>
-                      transaction.type == TransactionType.transfer
+                      transaction.isCreditCardPayment
+                      ? 'Card payment'
+                      : transaction.type == TransactionType.transfer
                       ? 'Transfer'
                       : state.categoryById(transaction.categoryId)?.name ??
                             'Unknown category',
                   categoryIconFor: (transaction) =>
-                      transaction.type == TransactionType.transfer
+                      transaction.isCreditCardPayment
+                      ? Icons.credit_card_rounded
+                      : transaction.type == TransactionType.transfer
                       ? Icons.swap_horiz_rounded
                       : state.categoryById(transaction.categoryId)?.icon ??
                             Icons.sell_outlined,

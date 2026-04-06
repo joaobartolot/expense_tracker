@@ -7,6 +7,8 @@ class TransactionTile extends StatelessWidget {
   const TransactionTile({
     super.key,
     required this.transaction,
+    required this.displayAmount,
+    required this.displayCurrencyCode,
     required this.categoryName,
     required this.categoryIcon,
     required this.accountName,
@@ -16,6 +18,8 @@ class TransactionTile extends StatelessWidget {
   });
 
   final TransactionItem transaction;
+  final double displayAmount;
+  final String displayCurrencyCode;
   final String categoryName;
   final IconData categoryIcon;
   final String accountName;
@@ -27,6 +31,7 @@ class TransactionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isIncome = transaction.type == TransactionType.income;
     final isTransfer = transaction.type == TransactionType.transfer;
+    final isCreditCardPayment = transaction.isCreditCardPayment;
     final amountColor = isTransfer
         ? AppColors.brandDark
         : isIncome
@@ -61,7 +66,9 @@ class TransactionTile extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
-                    categoryIcon,
+                    isCreditCardPayment
+                        ? Icons.credit_card_rounded
+                        : categoryIcon,
                     color: isTransfer
                         ? AppColors.brandDark
                         : isIncome
@@ -95,7 +102,7 @@ class TransactionTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  '$amountPrefix${formatCurrency(transaction.amount, currencyCode: transaction.currencyCode)}',
+                  '$amountPrefix${formatCurrency(displayAmount, currencyCode: displayCurrencyCode)}',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,

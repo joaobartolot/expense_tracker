@@ -1,35 +1,81 @@
 import 'package:expense_tracker/app/state/app_state_snapshot.dart';
+import 'package:expense_tracker/core/utils/currency_conversion_service.dart';
 import 'package:expense_tracker/features/accounts/domain/models/account.dart';
 import 'package:expense_tracker/features/accounts/domain/services/balance_overview_service.dart';
+import 'package:expense_tracker/features/accounts/domain/services/credit_card_overview_service.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
 import 'package:expense_tracker/features/settings/domain/models/app_settings.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
+import 'package:expense_tracker/features/transactions/domain/services/transaction_aggregation_service.dart';
 
 class AppStateFactory {
   const AppStateFactory({
     required BalanceOverviewService balanceOverviewService,
-  }) : _balanceOverviewService = balanceOverviewService;
+    required CreditCardOverviewService creditCardOverviewService,
+    required CurrencyConversionService currencyConversionService,
+    required TransactionAggregationService transactionAggregationService,
+  }) : _balanceOverviewService = balanceOverviewService,
+       _creditCardOverviewService = creditCardOverviewService,
+       _currencyConversionService = currencyConversionService,
+       _transactionAggregationService = transactionAggregationService;
 
   final BalanceOverviewService _balanceOverviewService;
+  final CreditCardOverviewService _creditCardOverviewService;
+  final CurrencyConversionService _currencyConversionService;
+  final TransactionAggregationService _transactionAggregationService;
 
-  AppStateSnapshot buildSnapshot({
+  Future<AppStateSnapshot> buildSnapshot({
     required AppStateSnapshot previous,
     required AppSettings settings,
     required List<Account> accounts,
     required List<CategoryItem> categories,
     required List<TransactionItem> transactions,
-  }) {
+    DateTime? now,
+  }) async {
+    final currentDate = now ?? DateTime.now();
     final accountsById = {for (final account in accounts) account.id: account};
     final categoriesById = {
       for (final category in categories) category.id: category,
     };
     final effectiveBalances = _balanceOverviewService
-        .calculateEffectiveBalances(accounts: accounts);
+        .calculateEffectiveBalances(
+          accounts: accounts,
+          transactions: transactions,
+        );
+    final baseCurrencyCode = settings.defaultCurrencyCode;
+    final currentRates = await _currencyConversionService.latestRatesToCurrency(
+      fromCurrencyCodes: {
+        baseCurrencyCode,
+        ...accounts.map((account) => account.currencyCode),
+        ...transactions.map((transaction) => transaction.currencyCode),
+      },
+      toCurrencyCode: baseCurrencyCode,
+      date: currentDate,
+    );
+    final balanceOverview = await _balanceOverviewService
+        .calculateBalanceOverview(
+          accounts: accounts,
+          effectiveBalances: effectiveBalances,
+          baseCurrencyCode: baseCurrencyCode,
+          currentRates: currentRates,
+        );
+    final transactionAggregation = await _transactionAggregationService
+        .buildAggregation(
+          transactions: transactions,
+          baseCurrencyCode: baseCurrencyCode,
+          currentRates: currentRates,
+        );
     final periodTransactions = transactions
         .where(
           (transaction) => previous.selectedPeriod.contains(transaction.date),
         )
         .toList(growable: false);
+    final creditCardStates = _creditCardOverviewService.buildStates(
+      accounts: accounts,
+      effectiveBalances: effectiveBalances,
+      transactions: transactions,
+      now: currentDate,
+    );
 
     return AppStateSnapshot(
       hasLoaded: previous.hasLoaded,
@@ -42,10 +88,21 @@ class AppStateFactory {
       accountsById: accountsById,
       categoriesById: categoriesById,
       effectiveBalances: effectiveBalances,
-      globalBalance: _balanceOverviewService.calculateGlobalBalance(accounts),
+      convertedTransactionAmounts: transactionAggregation.convertedAmounts,
+      missingConvertedTransactionIds:
+          transactionAggregation.missingTransactionIds,
+      globalBalance: balanceOverview.totalBalance,
+      missingGlobalBalanceConversionCount:
+          balanceOverview.missingAccountIds.length,
+      asOfDate: currentDate,
+      creditCardStates: creditCardStates,
       selectedPeriod: previous.selectedPeriod,
       periodTransactions: periodTransactions,
-      periodSummary: _buildActivitySummary(periodTransactions),
+      periodSummary: _buildActivitySummary(
+        periodTransactions,
+        convertedTransactionAmounts: transactionAggregation.convertedAmounts,
+        missingTransactionIds: transactionAggregation.missingTransactionIds,
+      ),
       historyFilter: previous.historyFilter,
       historySort: previous.historySort,
       historySearchQuery: previous.historySearchQuery,
@@ -78,7 +135,11 @@ class AppStateFactory {
     return current.copyWith(
       selectedPeriod: nextPeriod,
       periodTransactions: periodTransactions,
-      periodSummary: _buildActivitySummary(periodTransactions),
+      periodSummary: _buildActivitySummary(
+        periodTransactions,
+        convertedTransactionAmounts: current.convertedTransactionAmounts,
+        missingTransactionIds: current.missingConvertedTransactionIds,
+      ),
       historyFilter: nextFilter,
       historySort: nextSort,
       historySearchQuery: nextQuery,
@@ -93,17 +154,30 @@ class AppStateFactory {
     );
   }
 
-  ActivitySummary _buildActivitySummary(List<TransactionItem> transactions) {
+  ActivitySummary _buildActivitySummary(
+    List<TransactionItem> transactions, {
+    required Map<String, double> convertedTransactionAmounts,
+    required Set<String> missingTransactionIds,
+  }) {
     var income = 0.0;
     var expenses = 0.0;
+    var missingConversionCount = 0;
 
     for (final transaction in transactions) {
+      final amount = convertedTransactionAmounts[transaction.id];
+      if (amount == null) {
+        if (missingTransactionIds.contains(transaction.id)) {
+          missingConversionCount += 1;
+        }
+        continue;
+      }
+
       switch (transaction.type) {
         case TransactionType.income:
-          income += transaction.amount;
+          income += amount;
           break;
         case TransactionType.expense:
-          expenses += transaction.amount;
+          expenses += amount;
           break;
         case TransactionType.transfer:
           break;
@@ -114,6 +188,7 @@ class AppStateFactory {
       income: income,
       expenses: expenses,
       netMovement: income - expenses,
+      missingConversionCount: missingConversionCount,
     );
   }
 

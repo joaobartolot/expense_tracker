@@ -1,5 +1,7 @@
 enum TransactionType { income, expense, transfer }
 
+enum TransactionTransferKind { standard, creditCardPayment }
+
 class TransactionItem {
   TransactionItem({
     required this.id,
@@ -12,9 +14,12 @@ class TransactionItem {
     this.accountId,
     this.sourceAccountId,
     this.destinationAccountId,
+    this.destinationAmount,
+    this.destinationCurrencyCode,
     this.foreignAmount,
     this.foreignCurrencyCode,
     this.exchangeRate,
+    this.transferKind,
   }) : assert(
          _isValidConfiguration(
            type: type,
@@ -36,11 +41,22 @@ class TransactionItem {
   final TransactionType type;
   final String? sourceAccountId;
   final String? destinationAccountId;
+  final double? destinationAmount;
+  final String? destinationCurrencyCode;
   final double? foreignAmount;
   final String? foreignCurrencyCode;
   final double? exchangeRate;
+  final TransactionTransferKind? transferKind;
 
   bool get isTransfer => type == TransactionType.transfer;
+
+  TransactionTransferKind get resolvedTransferKind => isTransfer
+      ? (transferKind ?? TransactionTransferKind.standard)
+      : TransactionTransferKind.standard;
+
+  bool get isCreditCardPayment =>
+      isTransfer &&
+      resolvedTransferKind == TransactionTransferKind.creditCardPayment;
 
   bool get isIncomeOrExpense => !isTransfer;
 
@@ -70,7 +86,8 @@ class TransactionItem {
     if (isTransfer) {
       return {
         if (_hasValue(sourceAccountId)) sourceAccountId!: -amount,
-        if (_hasValue(destinationAccountId)) destinationAccountId!: amount,
+        if (_hasValue(destinationAccountId))
+          destinationAccountId!: destinationAmount ?? amount,
       };
     }
 
@@ -93,9 +110,12 @@ class TransactionItem {
       'type': type.name,
       'sourceAccountId': sourceAccountId,
       'destinationAccountId': destinationAccountId,
+      'destinationAmount': destinationAmount,
+      'destinationCurrencyCode': destinationCurrencyCode,
       'foreignAmount': foreignAmount,
       'foreignCurrencyCode': foreignCurrencyCode,
       'exchangeRate': exchangeRate,
+      'transferKind': isTransfer ? resolvedTransferKind.name : null,
     };
   }
 
@@ -111,9 +131,12 @@ class TransactionItem {
       type: _transactionTypeFromName(map['type'] as String?),
       sourceAccountId: _optionalString(map['sourceAccountId']),
       destinationAccountId: _optionalString(map['destinationAccountId']),
+      destinationAmount: (map['destinationAmount'] as num?)?.toDouble(),
+      destinationCurrencyCode: map['destinationCurrencyCode'] as String?,
       foreignAmount: (map['foreignAmount'] as num?)?.toDouble(),
       foreignCurrencyCode: map['foreignCurrencyCode'] as String?,
       exchangeRate: (map['exchangeRate'] as num?)?.toDouble(),
+      transferKind: _transferKindFromName(map['transferKind'] as String?),
     );
   }
 
@@ -132,12 +155,18 @@ class TransactionItem {
     bool clearSourceAccountId = false,
     String? destinationAccountId,
     bool clearDestinationAccountId = false,
+    double? destinationAmount,
+    bool clearDestinationAmount = false,
+    String? destinationCurrencyCode,
+    bool clearDestinationCurrencyCode = false,
     double? foreignAmount,
     bool clearForeignAmount = false,
     String? foreignCurrencyCode,
     bool clearForeignCurrencyCode = false,
     double? exchangeRate,
     bool clearExchangeRate = false,
+    TransactionTransferKind? transferKind,
+    bool clearTransferKind = false,
   }) {
     return TransactionItem(
       id: id ?? this.id,
@@ -154,6 +183,12 @@ class TransactionItem {
       destinationAccountId: clearDestinationAccountId
           ? null
           : destinationAccountId ?? this.destinationAccountId,
+      destinationAmount: clearDestinationAmount
+          ? null
+          : destinationAmount ?? this.destinationAmount,
+      destinationCurrencyCode: clearDestinationCurrencyCode
+          ? null
+          : destinationCurrencyCode ?? this.destinationCurrencyCode,
       foreignAmount: clearForeignAmount
           ? null
           : foreignAmount ?? this.foreignAmount,
@@ -163,6 +198,9 @@ class TransactionItem {
       exchangeRate: clearExchangeRate
           ? null
           : exchangeRate ?? this.exchangeRate,
+      transferKind: clearTransferKind
+          ? null
+          : transferKind ?? this.transferKind,
     );
   }
 
@@ -217,6 +255,17 @@ class TransactionItem {
     return TransactionType.values.firstWhere(
       (type) => type.name == value,
       orElse: () => TransactionType.expense,
+    );
+  }
+
+  static TransactionTransferKind? _transferKindFromName(String? value) {
+    if (!_hasValue(value)) {
+      return null;
+    }
+
+    return TransactionTransferKind.values.firstWhere(
+      (kind) => kind.name == value,
+      orElse: () => TransactionTransferKind.standard,
     );
   }
 }

@@ -5,8 +5,11 @@ import 'package:expense_tracker/features/accounts/domain/models/account.dart';
 import 'package:expense_tracker/features/accounts/presentation/pages/add_account_page.dart';
 import 'package:expense_tracker/features/accounts/presentation/widgets/account_summary_card.dart';
 import 'package:expense_tracker/features/accounts/presentation/widgets/account_tile.dart';
+import 'package:expense_tracker/features/transactions/presentation/pages/add_transaction_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+enum _AccountDeletionAction { deleteAccountOnly, deleteAccountAndTransactions }
 
 class AccountsPage extends ConsumerStatefulWidget {
   const AccountsPage({super.key});
@@ -34,35 +37,70 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
     );
   }
 
+  Future<void> _openCreditCardPayment(
+    BuildContext context,
+    Account account,
+  ) async {
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) =>
+            AddTransactionPage.creditCardPayment(creditCardAccount: account),
+      ),
+    );
+  }
+
   Future<void> _deleteAccount(BuildContext context, Account account) async {
     final appState = ref.read(appStateProvider.notifier);
-    final didConfirm = await showDialog<bool>(
+    final state = ref.read(appStateProvider);
+    final linkedTransactions = state.transactionsForAccount(account.id);
+    final deletionAction = await showDialog<_AccountDeletionAction>(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('Delete account?'),
           content: Text(
-            'The tracked balance for ${account.name} will be removed.',
+            linkedTransactions.isEmpty
+                ? 'The tracked balance for ${account.name} will be removed.'
+                : '${account.name} has ${linkedTransactions.length} linked transaction${linkedTransactions.length == 1 ? '' : 's'}. Delete the account only if you also want to remove those transactions.',
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: () => Navigator.of(context).pop(),
               child: const Text('Cancel'),
             ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.danger,
-                foregroundColor: AppColors.white,
+            if (linkedTransactions.isEmpty)
+              FilledButton(
+                onPressed: () => Navigator.of(
+                  context,
+                ).pop(_AccountDeletionAction.deleteAccountOnly),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                  foregroundColor: AppColors.white,
+                ),
+                child: const Text('Delete'),
+              )
+            else
+              FilledButton(
+                onPressed: () => Navigator.of(
+                  context,
+                ).pop(_AccountDeletionAction.deleteAccountAndTransactions),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                  foregroundColor: AppColors.white,
+                ),
+                child: const Text('Delete all'),
               ),
-              child: const Text('Delete'),
-            ),
           ],
         );
       },
     );
 
-    if (didConfirm != true) {
+    if (deletionAction == null) {
+      return;
+    }
+
+    if (deletionAction == _AccountDeletionAction.deleteAccountAndTransactions) {
+      await appState.deleteAccountWithTransactions(account);
       return;
     }
 
@@ -199,6 +237,7 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
             totalBalance: state.globalBalance,
             accountCount: accounts.length,
             currencyCode: state.settings.defaultCurrencyCode,
+            missingConversionCount: state.missingGlobalBalanceConversionCount,
           ),
           const SizedBox(height: 28),
           if (!state.hasLoaded && state.isLoading)
@@ -267,6 +306,9 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
                         child: AccountTile(
                           account: account,
                           balance: state.balanceForAccount(account.id),
+                          creditCardState: state.creditCardStateForAccount(
+                            account.id,
+                          ),
                           leading: SizedBox(
                             width: 24,
                             child: canDrag
@@ -301,6 +343,13 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
                             child: AccountTile(
                               account: account,
                               balance: state.balanceForAccount(account.id),
+                              creditCardState: state.creditCardStateForAccount(
+                                account.id,
+                              ),
+                              onCreditCardPaymentTap: account.isCreditCard
+                                  ? () =>
+                                        _openCreditCardPayment(context, account)
+                                  : null,
                               onTap: () => _openEditAccount(context, account),
                               onLongPressStart: (details) =>
                                   _showAccountActionMenu(

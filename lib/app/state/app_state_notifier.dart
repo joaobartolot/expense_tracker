@@ -11,7 +11,9 @@ import 'package:expense_tracker/features/categories/domain/models/category_item.
 import 'package:expense_tracker/features/settings/data/settings_repository.dart';
 import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
+import 'package:expense_tracker/features/transactions/domain/services/transaction_aggregation_service.dart';
 import 'package:expense_tracker/features/transactions/domain/services/transaction_balance_service.dart';
+import 'package:expense_tracker/core/utils/currency_conversion_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AppStateNotifier extends Notifier<AppStateSnapshot> {
@@ -20,11 +22,14 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
   late final CategoryRepository _categoryRepository;
   late final TransactionRepository _transactionRepository;
   late final TransactionBalanceService _transactionBalanceService;
+  late final TransactionAggregationService _transactionAggregationService;
+  late final CurrencyConversionService _currencyConversionService;
   late final AppStateFactory _stateFactory;
 
   int _refreshToken = 0;
   bool _didBindStorageListeners = false;
   bool _didScheduleInitialRefresh = false;
+  Timer? _dateRefreshTimer;
 
   @override
   AppStateSnapshot build() {
@@ -33,8 +38,15 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
     _categoryRepository = ref.read(categoryRepositoryProvider);
     _transactionRepository = ref.read(transactionRepositoryProvider);
     _transactionBalanceService = ref.read(transactionBalanceServiceProvider);
+    _transactionAggregationService = ref.read(
+      transactionAggregationServiceProvider,
+    );
+    _currencyConversionService = ref.read(currencyConversionServiceProvider);
     _stateFactory = AppStateFactory(
       balanceOverviewService: ref.read(balanceOverviewServiceProvider),
+      creditCardOverviewService: ref.read(creditCardOverviewServiceProvider),
+      currencyConversionService: _currencyConversionService,
+      transactionAggregationService: _transactionAggregationService,
     );
 
     if (!_didBindStorageListeners) {
@@ -68,6 +80,7 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
     transactionsListener.addListener(scheduleRefresh);
 
     ref.onDispose(() {
+      _dateRefreshTimer?.cancel();
       settingsListener.removeListener(scheduleRefresh);
       accountsListener.removeListener(scheduleRefresh);
       categoriesListener.removeListener(scheduleRefresh);
@@ -94,7 +107,7 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
         return;
       }
 
-      final nextState = _stateFactory.buildSnapshot(
+      final nextState = await _stateFactory.buildSnapshot(
         previous: state,
         settings: _settingsRepository.getSettings(),
         accounts: results[0] as List<Account>,
@@ -102,6 +115,7 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
         transactions: results[2] as List<TransactionItem>,
       );
 
+      _scheduleDateRefresh(nextState.asOfDate);
       state = nextState.copyWith(
         hasLoaded: true,
         isLoading: false,
@@ -161,6 +175,15 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
     await _accountRepository.deleteAccount(account.id);
   }
 
+  Future<void> deleteAccountWithTransactions(Account account) async {
+    final linkedTransactions = state.transactionsForAccount(account.id);
+    await _transactionBalanceService.deleteTransactions(
+      linkedTransactions,
+      currentAccounts: state.accounts,
+    );
+    await _accountRepository.deleteAccount(account.id);
+  }
+
   Future<void> reorderAccounts(List<Account> accounts) {
     return _accountRepository.reorderAccounts(accounts);
   }
@@ -207,6 +230,15 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
     await _categoryRepository.deleteCategory(category.id);
   }
 
+  Future<void> deleteCategoryWithTransactions(CategoryItem category) async {
+    final linkedTransactions = state.transactionsForCategory(category.id);
+    await _transactionBalanceService.deleteTransactions(
+      linkedTransactions,
+      currentAccounts: state.accounts,
+    );
+    await _categoryRepository.deleteCategory(category.id);
+  }
+
   Future<void> updateSettings({
     required String displayName,
     required String defaultCurrencyCode,
@@ -223,5 +255,15 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
     }
 
     return null;
+  }
+
+  void _scheduleDateRefresh(DateTime from) {
+    _dateRefreshTimer?.cancel();
+    final nextMidnight = DateTime(from.year, from.month, from.day + 1);
+    final delay = nextMidnight.difference(DateTime.now());
+    _dateRefreshTimer = Timer(
+      delay.isNegative ? Duration.zero : delay,
+      () => unawaited(refresh()),
+    );
   }
 }

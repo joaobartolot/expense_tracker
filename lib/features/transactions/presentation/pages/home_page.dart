@@ -160,9 +160,13 @@ class HomePage extends ConsumerWidget {
     return grouped;
   }
 
-  String _balanceSubtitle(int accountCount) {
+  String _balanceSubtitle(int accountCount, int missingConversionCount) {
     if (accountCount == 0) {
       return 'Add an account to start tracking your balance.';
+    }
+
+    if (missingConversionCount > 0) {
+      return 'Across $accountCount tracked accounts. $missingConversionCount excluded until exchange rates load.';
     }
 
     return 'Across $accountCount tracked account${accountCount == 1 ? '' : 's'}.';
@@ -199,7 +203,10 @@ class HomePage extends ConsumerWidget {
             balance: state.globalBalance,
             currencyCode: state.settings.defaultCurrencyCode,
             title: 'Tracked balance',
-            subtitle: _balanceSubtitle(state.accounts.length),
+            subtitle: _balanceSubtitle(
+              state.accounts.length,
+              state.missingGlobalBalanceConversionCount,
+            ),
           ),
           const SizedBox(height: 16),
           Row(
@@ -273,13 +280,24 @@ class HomePage extends ConsumerWidget {
               (entry) => TransactionGroup(
                 label: entry.key,
                 transactions: entry.value,
+                displayAmountFor: (transaction) =>
+                    state.convertedAmountForTransaction(transaction.id) ??
+                    transaction.amount,
+                displayCurrencyCodeFor: (transaction) =>
+                    state.convertedAmountForTransaction(transaction.id) != null
+                    ? state.settings.defaultCurrencyCode
+                    : transaction.currencyCode,
                 categoryNameFor: (transaction) =>
-                    transaction.type == TransactionType.transfer
+                    transaction.isCreditCardPayment
+                    ? 'Card payment'
+                    : transaction.type == TransactionType.transfer
                     ? 'Transfer'
                     : state.categoryById(transaction.categoryId)?.name ??
                           'Unknown category',
                 categoryIconFor: (transaction) =>
-                    transaction.type == TransactionType.transfer
+                    transaction.isCreditCardPayment
+                    ? Icons.credit_card_rounded
+                    : transaction.type == TransactionType.transfer
                     ? Icons.swap_horiz_rounded
                     : state.categoryById(transaction.categoryId)?.icon ??
                           Icons.sell_outlined,

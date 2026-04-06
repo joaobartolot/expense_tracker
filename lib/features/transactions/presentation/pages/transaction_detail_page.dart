@@ -109,6 +109,7 @@ class TransactionDetailPage extends ConsumerWidget {
     );
     final isIncome = transaction.type == TransactionType.income;
     final isTransfer = transaction.type == TransactionType.transfer;
+    final isCreditCardPayment = transaction.isCreditCardPayment;
     final amountColor = isTransfer
         ? AppColors.brandDark
         : isIncome
@@ -126,10 +127,11 @@ class TransactionDetailPage extends ConsumerWidget {
     final sourceAccountName = sourceAccount?.name ?? 'Unknown account';
     final destinationAccountName =
         destinationAccount?.name ?? 'Unknown account';
-    final categoryIcon = isTransfer
+    final categoryIcon = isCreditCardPayment
+        ? Icons.credit_card_rounded
+        : isTransfer
         ? Icons.swap_horiz_rounded
         : category?.icon ?? Icons.sell_outlined;
-    final defaultCurrencyCode = state.settings.defaultCurrencyCode;
     final enteredCurrencyCode =
         transaction.foreignCurrencyCode ?? transaction.currencyCode;
     final enteredAmount = transaction.foreignAmount ?? transaction.amount;
@@ -190,7 +192,9 @@ class TransactionDetailPage extends ConsumerWidget {
                       const Spacer(),
                       _StatusBadge(
                         label: isTransfer
-                            ? 'Transfer'
+                            ? (isCreditCardPayment
+                                  ? 'Card payment'
+                                  : 'Transfer')
                             : isIncome
                             ? 'Income'
                             : 'Expense',
@@ -227,7 +231,7 @@ class TransactionDetailPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Converted to $defaultCurrencyCode at ${transaction.exchangeRate?.toStringAsFixed(4) ?? 'n/a'}',
+                      'Converted to ${transaction.currencyCode} at ${transaction.exchangeRate?.toStringAsFixed(4) ?? 'n/a'}',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -259,13 +263,15 @@ class TransactionDetailPage extends ConsumerWidget {
                   ] else ...[
                     _DetailTile(
                       icon: Icons.arrow_upward_rounded,
-                      label: 'From account',
+                      label: isCreditCardPayment ? 'Paid from' : 'From account',
                       value: sourceAccountName,
                     ),
                     const SizedBox(height: 12),
                     _DetailTile(
-                      icon: Icons.arrow_downward_rounded,
-                      label: 'To account',
+                      icon: isCreditCardPayment
+                          ? Icons.credit_card_rounded
+                          : Icons.arrow_downward_rounded,
+                      label: isCreditCardPayment ? 'Credit card' : 'To account',
                       value: destinationAccountName,
                     ),
                   ],
