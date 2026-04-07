@@ -5,6 +5,9 @@ import 'package:expense_tracker/features/accounts/domain/models/credit_card_acco
 import 'package:expense_tracker/features/accounts/domain/services/balance_overview_service.dart';
 import 'package:expense_tracker/features/accounts/domain/services/credit_card_overview_service.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
+import 'package:expense_tracker/features/recurring_transactions/domain/models/recurring_transaction.dart';
+import 'package:expense_tracker/features/recurring_transactions/domain/models/recurring_transaction_overview.dart';
+import 'package:expense_tracker/features/recurring_transactions/domain/services/recurring_schedule_service.dart';
 import 'package:expense_tracker/features/settings/domain/models/app_settings.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:expense_tracker/features/transactions/domain/services/transaction_aggregation_service.dart';
@@ -15,15 +18,18 @@ class AppStateFactory {
     required CreditCardOverviewService creditCardOverviewService,
     required CurrencyConversionService currencyConversionService,
     required TransactionAggregationService transactionAggregationService,
+    required RecurringScheduleService recurringScheduleService,
   }) : _balanceOverviewService = balanceOverviewService,
        _creditCardOverviewService = creditCardOverviewService,
        _currencyConversionService = currencyConversionService,
-       _transactionAggregationService = transactionAggregationService;
+       _transactionAggregationService = transactionAggregationService,
+       _recurringScheduleService = recurringScheduleService;
 
   final BalanceOverviewService _balanceOverviewService;
   final CreditCardOverviewService _creditCardOverviewService;
   final CurrencyConversionService _currencyConversionService;
   final TransactionAggregationService _transactionAggregationService;
+  final RecurringScheduleService _recurringScheduleService;
 
   Future<AppStateSnapshot> buildSnapshot({
     required AppStateSnapshot previous,
@@ -31,6 +37,7 @@ class AppStateFactory {
     required List<Account> accounts,
     required List<CategoryItem> categories,
     required List<TransactionItem> transactions,
+    required List<RecurringTransaction> recurringTransactions,
     DateTime? now,
   }) async {
     final currentDate = now ?? DateTime.now();
@@ -93,6 +100,10 @@ class AppStateFactory {
       creditCardStates: creditCardStates,
       accountSelectedPeriods: accountSelectedPeriods,
     );
+    final recurringTransactionOverviews = _buildRecurringTransactionOverviews(
+      recurringTransactions,
+      now: currentDate,
+    );
 
     return AppStateSnapshot(
       hasLoaded: previous.hasLoaded,
@@ -102,6 +113,7 @@ class AppStateFactory {
       accounts: accounts,
       categories: categories,
       transactions: transactions,
+      recurringTransactions: recurringTransactions,
       accountsById: accountsById,
       categoriesById: categoriesById,
       effectiveBalances: effectiveBalances,
@@ -133,6 +145,7 @@ class AppStateFactory {
         sort: previous.historySort,
         query: previous.historySearchQuery,
       ),
+      recurringTransactionOverviews: recurringTransactionOverviews,
     );
   }
 
@@ -181,7 +194,51 @@ class AppStateFactory {
         sort: nextSort,
         query: nextQuery,
       ),
+      recurringTransactionOverviews: _buildRecurringTransactionOverviews(
+        current.recurringTransactions,
+        now: current.asOfDate,
+      ),
     );
+  }
+
+  List<RecurringTransactionOverview> _buildRecurringTransactionOverviews(
+    List<RecurringTransaction> recurringTransactions, {
+    required DateTime now,
+  }) {
+    final overviews = recurringTransactions
+        .map(
+          (transaction) =>
+              _recurringScheduleService.buildOverview(transaction, now: now),
+        )
+        .toList(growable: false);
+
+    final sortedOverviews = [...overviews]
+      ..sort((left, right) {
+        final leftDate = left.nextDueDate;
+        final rightDate = right.nextDueDate;
+        if (leftDate == null && rightDate == null) {
+          return left.recurringTransaction.title.compareTo(
+            right.recurringTransaction.title,
+          );
+        }
+        if (leftDate == null) {
+          return 1;
+        }
+        if (rightDate == null) {
+          return -1;
+        }
+
+        final dateComparison = leftDate.compareTo(rightDate);
+        if (dateComparison != 0) {
+          return dateComparison;
+        }
+
+        return left.recurringTransaction.title.compareTo(
+          right.recurringTransaction.title,
+        );
+      });
+
+    return sortedOverviews;
   }
 
   Map<String, SelectedPeriod> _resolveAccountSelectedPeriods({

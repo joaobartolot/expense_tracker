@@ -2,6 +2,8 @@ import 'package:expense_tracker/core/utils/financial_period.dart';
 import 'package:expense_tracker/features/accounts/domain/models/account.dart';
 import 'package:expense_tracker/features/accounts/domain/models/credit_card_account_state.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
+import 'package:expense_tracker/features/recurring_transactions/domain/models/recurring_transaction.dart';
+import 'package:expense_tracker/features/recurring_transactions/domain/models/recurring_transaction_overview.dart';
 import 'package:expense_tracker/features/settings/domain/models/app_settings.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 
@@ -113,6 +115,7 @@ class AppStateSnapshot {
     required this.accounts,
     required this.categories,
     required this.transactions,
+    required this.recurringTransactions,
     required this.accountsById,
     required this.categoriesById,
     required this.effectiveBalances,
@@ -131,6 +134,7 @@ class AppStateSnapshot {
     required this.historySort,
     required this.historySearchQuery,
     required this.historyTransactions,
+    required this.recurringTransactionOverviews,
   });
 
   factory AppStateSnapshot.initial({required AppSettings settings}) {
@@ -142,6 +146,7 @@ class AppStateSnapshot {
       accounts: const [],
       categories: const [],
       transactions: const [],
+      recurringTransactions: const [],
       accountsById: const {},
       categoriesById: const {},
       effectiveBalances: const {},
@@ -163,6 +168,7 @@ class AppStateSnapshot {
       historySort: TransactionHistorySort.newestFirst,
       historySearchQuery: '',
       historyTransactions: const [],
+      recurringTransactionOverviews: const [],
     );
   }
 
@@ -173,6 +179,7 @@ class AppStateSnapshot {
   final List<Account> accounts;
   final List<CategoryItem> categories;
   final List<TransactionItem> transactions;
+  final List<RecurringTransaction> recurringTransactions;
   final Map<String, Account> accountsById;
   final Map<String, CategoryItem> categoriesById;
   final Map<String, double> effectiveBalances;
@@ -191,6 +198,7 @@ class AppStateSnapshot {
   final TransactionHistorySort historySort;
   final String historySearchQuery;
   final List<TransactionItem> historyTransactions;
+  final List<RecurringTransactionOverview> recurringTransactionOverviews;
 
   List<CategoryItem> get incomeCategories {
     return categories
@@ -290,10 +298,37 @@ class AppStateSnapshot {
     );
   }
 
+  bool hasLinkedRecurringTransactionsForAccount(String accountId) {
+    return recurringTransactions.any(
+      (transaction) =>
+          transaction.accountId == accountId ||
+          transaction.sourceAccountId == accountId ||
+          transaction.destinationAccountId == accountId,
+    );
+  }
+
   bool hasLinkedTransactionsForCategory(String categoryId) {
     return transactions.any(
       (transaction) => transaction.categoryId == categoryId,
     );
+  }
+
+  bool hasLinkedRecurringTransactionsForCategory(String categoryId) {
+    return recurringTransactions.any(
+      (transaction) => transaction.categoryId == categoryId,
+    );
+  }
+
+  RecurringTransaction? recurringTransactionById(
+    String recurringTransactionId,
+  ) {
+    for (final recurringTransaction in recurringTransactions) {
+      if (recurringTransaction.id == recurringTransactionId) {
+        return recurringTransaction;
+      }
+    }
+
+    return null;
   }
 
   AppStateSnapshot copyWith({
@@ -304,6 +339,7 @@ class AppStateSnapshot {
     List<Account>? accounts,
     List<CategoryItem>? categories,
     List<TransactionItem>? transactions,
+    List<RecurringTransaction>? recurringTransactions,
     Map<String, Account>? accountsById,
     Map<String, CategoryItem>? categoriesById,
     Map<String, double>? effectiveBalances,
@@ -322,6 +358,7 @@ class AppStateSnapshot {
     TransactionHistorySort? historySort,
     String? historySearchQuery,
     List<TransactionItem>? historyTransactions,
+    List<RecurringTransactionOverview>? recurringTransactionOverviews,
   }) {
     return AppStateSnapshot(
       hasLoaded: hasLoaded ?? this.hasLoaded,
@@ -331,6 +368,8 @@ class AppStateSnapshot {
       accounts: accounts ?? this.accounts,
       categories: categories ?? this.categories,
       transactions: transactions ?? this.transactions,
+      recurringTransactions:
+          recurringTransactions ?? this.recurringTransactions,
       accountsById: accountsById ?? this.accountsById,
       categoriesById: categoriesById ?? this.categoriesById,
       effectiveBalances: effectiveBalances ?? this.effectiveBalances,
@@ -354,6 +393,8 @@ class AppStateSnapshot {
       historySort: historySort ?? this.historySort,
       historySearchQuery: historySearchQuery ?? this.historySearchQuery,
       historyTransactions: historyTransactions ?? this.historyTransactions,
+      recurringTransactionOverviews:
+          recurringTransactionOverviews ?? this.recurringTransactionOverviews,
     );
   }
 }

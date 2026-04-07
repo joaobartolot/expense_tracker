@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "639167768300",
+    "project_id": "vero-cd68f",
+    "storage_bucket": "vero-cd68f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:639167768300:android:6f07d07cb60d6f48c567c9",
+        "android_client_info": {
+          "package_name": "com.bartolot.vero"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "639167768300-qtsqhi9i9q3sfrm2dp0epso15r54eirv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bartolot.vero",
+            "certificate_hash": "ba50cbd01c1b137b940ee4aa0ccfbe017f0c535b"
+          }
+        },
+        {
+          "client_id": "639167768300-dkbnv0lqp034oqqpht7ntc7pmu2rk6rj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqU9KnaCw4e-K72-vxcSZMghiaEwuNIYg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "639167768300-dkbnv0lqp034oqqpht7ntc7pmu2rk6rj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

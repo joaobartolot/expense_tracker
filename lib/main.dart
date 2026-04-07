@@ -1,4 +1,5 @@
 import 'package:expense_tracker/app/app.dart';
+import 'package:expense_tracker/core/firebase/firebase_bootstrap.dart';
 import 'package:expense_tracker/core/logging/scoped_log_printer.dart';
 import 'package:expense_tracker/core/storage/hive_storage.dart';
 import 'package:flutter/material.dart';
@@ -21,10 +22,11 @@ Future<void> main() async {
   try {
     await HiveStorage.initialize();
     _logger.i('Hive storage initialized.');
+    await FirebaseBootstrap.initialize();
     runApp(const ProviderScope(child: ExpenseTrackerApp()));
   } catch (error, stackTrace) {
     _logger.e(
-      'Failed to initialize application storage.',
+      'Failed to initialize application services.',
       error: error,
       stackTrace: stackTrace,
     );

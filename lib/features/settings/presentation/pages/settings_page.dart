@@ -1,4 +1,5 @@
 import 'package:expense_tracker/app/state/app_state_provider.dart';
+import 'package:expense_tracker/features/auth/presentation/state/auth_controller.dart';
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/utils/supported_currencies.dart';
 import 'package:expense_tracker/core/widgets/app_text_input.dart';
@@ -102,6 +103,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(appStateProvider);
+    final authState = ref.watch(authControllerProvider);
     final theme = Theme.of(context);
     final colors = AppColors.of(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
@@ -212,6 +214,55 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   busyLabel: 'Saving...',
                   isBusy: _isSaving,
                   onPressed: _saveSettings,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _SettingsCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Account',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  authState.user?.email ??
+                      authState.user?.displayName ??
+                      'Signed in',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Authentication is separate from your local budgeting data, so signing out will not remove your Hive data.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+                if (authState.errorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    authState.errorMessage!,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.dangerDark,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 18),
+                PrimaryActionButton(
+                  label: 'Log out',
+                  busyLabel: 'Logging out...',
+                  isBusy: authState.isBusy,
+                  onPressed: () {
+                    ref.read(authControllerProvider.notifier).signOut();
+                  },
                 ),
               ],
             ),

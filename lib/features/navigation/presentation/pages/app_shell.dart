@@ -2,6 +2,7 @@ import 'package:expense_tracker/features/accounts/presentation/pages/accounts_pa
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/features/categories/presentation/pages/categories_page.dart';
 import 'package:expense_tracker/features/navigation/presentation/widgets/pill_bottom_nav_bar.dart';
+import 'package:expense_tracker/features/recurring_transactions/presentation/pages/recurring_transactions_page.dart';
 import 'package:expense_tracker/features/settings/presentation/pages/settings_page.dart';
 import 'package:expense_tracker/features/transactions/presentation/pages/home_page.dart';
 import 'package:flutter/material.dart';
@@ -24,8 +25,7 @@ class _AppShellState extends State<AppShell> {
     const HomePage(),
     const AccountsPage(),
     const CategoriesPage(),
-    // TODO: Replace this placeholder with the real recurring-transactions feature flow.
-    const _PlaceholderPage(label: 'Recurring'),
+    const RecurringTransactionsPage(),
     const SettingsPage(),
   ];
 
@@ -89,30 +89,6 @@ class _AppShellState extends State<AppShell> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _PlaceholderPage extends StatelessWidget {
-  const _PlaceholderPage({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = AppColors.of(context);
-
-    return SafeArea(
-      child: Center(
-        child: Text(
-          label,
-          style: theme.textTheme.headlineMedium?.copyWith(
-            color: colors.textPrimary,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
       ),
     );
   }

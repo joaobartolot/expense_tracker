@@ -1,6 +1,7 @@
 import 'package:expense_tracker/features/accounts/domain/models/account.dart';
 import 'package:expense_tracker/core/logging/scoped_log_printer.dart';
 import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
+import 'package:expense_tracker/features/recurring_transactions/domain/models/recurring_transaction.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -12,11 +13,14 @@ class HiveStorage {
 
   static const String categoriesBoxName = 'categories_box';
   static const String transactionsBoxName = 'transactions_box';
+  static const String recurringTransactionsBoxName =
+      'recurring_transactions_box';
   static const String settingsBoxName = 'settings_box';
   static const String accountsBoxName = 'accounts_box';
 
   static const String categoriesKey = 'categories';
   static const String transactionsKey = 'transactions';
+  static const String recurringTransactionsKey = 'recurring_transactions';
   static const String settingsKey = 'settings';
   static const String accountsKey = 'accounts';
   static const _uuid = Uuid();
@@ -37,6 +41,9 @@ class HiveStorage {
     final categoriesBox = await Hive.openBox(categoriesBoxName);
     final accountsBox = await Hive.openBox(accountsBoxName);
     final transactionsBox = await Hive.openBox(transactionsBoxName);
+    final recurringTransactionsBox = await Hive.openBox(
+      recurringTransactionsBoxName,
+    );
     final settingsBox = await Hive.openBox(settingsBoxName);
 
     if (categoriesBox.get(categoriesKey) == null) {
@@ -82,6 +89,15 @@ class HiveStorage {
       );
     }
 
+    if (recurringTransactionsBox.get(recurringTransactionsKey) == null) {
+      await recurringTransactionsBox.put(recurringTransactionsKey, const []);
+    } else {
+      await _dedupeRecurringOccurrenceTransactions(
+        transactionsBox: transactionsBox,
+        recurringTransactionsBox: recurringTransactionsBox,
+      );
+    }
+
     await _migrateAccountOpeningBalances(
       accountsBox: accountsBox,
       transactionsBox: transactionsBox,
@@ -102,6 +118,127 @@ class HiveStorage {
 
   static Map<String, String> _pendingCategoryIdRemap = {};
   static Map<String, String> _pendingAccountIdRemap = {};
+
+  static Future<void> _dedupeRecurringOccurrenceTransactions({
+    required Box<dynamic> transactionsBox,
+    required Box<dynamic> recurringTransactionsBox,
+  }) async {
+    final transactions = _readTransactionsFromBox(transactionsBox);
+    if (transactions.isEmpty) {
+      return;
+    }
+
+    final recurringTransactions = _readRecurringTransactionsFromBox(
+      recurringTransactionsBox,
+    );
+    if (recurringTransactions.isEmpty) {
+      return;
+    }
+
+    final duplicateTransactionIds = <String>{};
+    for (final recurringTransaction in recurringTransactions) {
+      if (!recurringTransaction.isAutomatic) {
+        continue;
+      }
+
+      final processedOccurrence =
+          recurringTransaction.lastProcessedOccurrenceDate;
+      if (processedOccurrence == null) {
+        continue;
+      }
+
+      final matchingTransactions = transactions.where(
+        (transaction) => _matchesRecurringOccurrence(
+          transaction,
+          recurringTransaction: recurringTransaction,
+          occurrenceDate: processedOccurrence,
+        ),
+      );
+      final duplicates = matchingTransactions.skip(1).map((item) => item.id);
+      duplicateTransactionIds.addAll(duplicates);
+    }
+
+    if (duplicateTransactionIds.isEmpty) {
+      return;
+    }
+
+    final cleanedTransactions = transactions
+        .where(
+          (transaction) => !duplicateTransactionIds.contains(transaction.id),
+        )
+        .toList(growable: false);
+
+    await transactionsBox.put(
+      transactionsKey,
+      cleanedTransactions
+          .map((transaction) => transaction.toMap())
+          .toList(growable: false),
+    );
+    _logger.i(
+      'Removed ${duplicateTransactionIds.length} duplicate recurring-generated transactions from Hive.',
+    );
+  }
+
+  static List<TransactionItem> _readTransactionsFromBox(Box<dynamic> box) {
+    final storedTransactions =
+        (box.get(transactionsKey) as List<dynamic>? ?? const [])
+            .cast<Map<dynamic, dynamic>>();
+
+    final transactions = <TransactionItem>[];
+    for (final map in storedTransactions) {
+      try {
+        transactions.add(TransactionItem.fromMap(map));
+      } catch (error, stackTrace) {
+        _logger.w(
+          'Skipped invalid stored transaction entry during startup repair.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
+
+    return transactions;
+  }
+
+  static List<RecurringTransaction> _readRecurringTransactionsFromBox(
+    Box<dynamic> box,
+  ) {
+    final storedRecurringTransactions =
+        (box.get(recurringTransactionsKey) as List<dynamic>? ?? const [])
+            .cast<Map<dynamic, dynamic>>();
+
+    final recurringTransactions = <RecurringTransaction>[];
+    for (final map in storedRecurringTransactions) {
+      try {
+        recurringTransactions.add(RecurringTransaction.fromMap(map));
+      } catch (error, stackTrace) {
+        _logger.w(
+          'Skipped invalid stored recurring transaction entry during startup repair.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
+
+    return recurringTransactions;
+  }
+
+  static bool _matchesRecurringOccurrence(
+    TransactionItem transaction, {
+    required RecurringTransaction recurringTransaction,
+    required DateTime occurrenceDate,
+  }) {
+    return transaction.title == recurringTransaction.title &&
+        transaction.type == recurringTransaction.type &&
+        transaction.amount == recurringTransaction.amount &&
+        transaction.currencyCode == recurringTransaction.currencyCode &&
+        transaction.categoryId == recurringTransaction.categoryId &&
+        transaction.accountId == recurringTransaction.accountId &&
+        transaction.sourceAccountId == recurringTransaction.sourceAccountId &&
+        transaction.destinationAccountId ==
+            recurringTransaction.destinationAccountId &&
+        transaction.date.isAtSameMomentAs(occurrenceDate);
+  }
 
   static List<CategoryItem> get _initialCategories {
     return const [
