@@ -46,20 +46,9 @@ class AccountOverviewPage extends ConsumerWidget {
   }
 
   Future<void> _openTransfer(BuildContext context, Account account) async {
-    if (account.isCreditCard) {
-      await Navigator.of(context).push<bool>(
-        MaterialPageRoute(
-          builder: (context) =>
-              AddTransactionPage.creditCardPayment(creditCardAccount: account),
-        ),
-      );
-      return;
-    }
-
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) =>
-            AddTransactionPage.transferFromAccount(account: account),
+        builder: (context) => AddTransactionPage.forAccount(account: account),
       ),
     );
   }

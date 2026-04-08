@@ -55,8 +55,7 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
   ) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) =>
-            AddTransactionPage.creditCardPayment(creditCardAccount: account),
+        builder: (context) => AddTransactionPage.forAccount(account: account),
       ),
     );
   }

@@ -284,6 +284,7 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
       isEditing: isEditing,
       previousTransaction: isEditing ? _transactionForId(transaction.id) : null,
       currentAccounts: state.accounts,
+      currentCategories: state.categories,
     );
   }
 

@@ -1,5 +1,7 @@
 import 'package:expense_tracker/core/logging/scoped_log_printer.dart';
 import 'package:expense_tracker/core/storage/hive_storage.dart';
+import 'package:expense_tracker/features/accounts/domain/models/account.dart';
+import 'package:expense_tracker/features/categories/domain/models/category_item.dart';
 import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:flutter/foundation.dart';
@@ -21,9 +23,13 @@ class TransactionValidationException implements Exception {
 
 class HiveTransactionRepository implements TransactionRepository {
   HiveTransactionRepository()
-    : _box = Hive.box(HiveStorage.transactionsBoxName);
+    : _box = Hive.box(HiveStorage.transactionsBoxName),
+      _accountsBox = Hive.box(HiveStorage.accountsBoxName),
+      _categoriesBox = Hive.box(HiveStorage.categoriesBoxName);
 
   final Box<dynamic> _box;
+  final Box<dynamic> _accountsBox;
+  final Box<dynamic> _categoriesBox;
 
   @override
   Future<List<TransactionItem>> getTransactions() async {
@@ -47,10 +53,10 @@ class HiveTransactionRepository implements TransactionRepository {
   @override
   Future<void> addTransaction(TransactionItem transaction) async {
     try {
-      _validateTransaction(transaction);
-      final transactions = _readTransactions()..insert(0, transaction);
+      final preparedTransaction = _prepareForCreate(transaction);
+      final transactions = _readTransactions()..insert(0, preparedTransaction);
       await _saveTransactions(transactions);
-      _logger.i('Saved transaction ${transaction.id}.');
+      _logger.i('Saved transaction ${preparedTransaction.id}.');
     } catch (error, stackTrace) {
       _logger.e(
         'Failed to add transaction ${transaction.id}.',
@@ -64,19 +70,20 @@ class HiveTransactionRepository implements TransactionRepository {
   @override
   Future<void> updateTransaction(TransactionItem transaction) async {
     try {
-      _validateTransaction(transaction);
+      final preparedTransaction = _prepareForUpdate(transaction);
       final transactions = _readTransactions();
       final index = transactions.indexWhere(
-        (item) => item.id == transaction.id,
+        (item) => item.id == preparedTransaction.id,
       );
       if (index == -1) {
-        _logger.w('Skipped update for missing transaction ${transaction.id}.');
-        return;
+        throw TransactionValidationException(
+          'Cannot update missing transaction ${preparedTransaction.id}.',
+        );
       }
 
-      transactions[index] = transaction;
+      transactions[index] = preparedTransaction;
       await _saveTransactions(transactions);
-      _logger.i('Updated transaction ${transaction.id}.');
+      _logger.i('Updated transaction ${preparedTransaction.id}.');
     } catch (error, stackTrace) {
       _logger.e(
         'Failed to update transaction ${transaction.id}.',
@@ -139,7 +146,138 @@ class HiveTransactionRepository implements TransactionRepository {
     return transactions;
   }
 
+  TransactionItem _prepareForCreate(TransactionItem transaction) {
+    final normalizedId = transaction.id.trim().isEmpty
+        ? createTransactionId()
+        : transaction.id;
+    final transactionWithId = transaction.copyWith(id: normalizedId);
+    return _prepareForPersistence(transactionWithId);
+  }
+
+  TransactionItem _prepareForUpdate(TransactionItem transaction) {
+    if (transaction.id.trim().isEmpty) {
+      throw const TransactionValidationException(
+        'Transaction ID is required for updates.',
+      );
+    }
+
+    return _prepareForPersistence(transaction);
+  }
+
+  TransactionItem _prepareForPersistence(TransactionItem transaction) {
+    final normalizedTransaction = transaction.isTransfer
+        ? transaction
+        : _normalizeIncomeOrExpense(transaction);
+    _validateTransaction(normalizedTransaction);
+    return normalizedTransaction;
+  }
+
+  TransactionItem _normalizeIncomeOrExpense(TransactionItem transaction) {
+    final account = _accountForId(transaction.accountId);
+    if (account == null) {
+      throw const TransactionValidationException(
+        'Income and expense transactions require a valid account.',
+      );
+    }
+
+    final category = _categoryForId(transaction.categoryId);
+    if (category == null) {
+      throw const TransactionValidationException(
+        'Income and expense transactions require a valid category.',
+      );
+    }
+
+    _validateCategoryType(category, type: transaction.type);
+
+    final targetCurrencyCode = account.currencyCode.trim().toUpperCase();
+    final mainCurrencyCode = transaction.currencyCode.trim().toUpperCase();
+    final foreignCurrencyCode = transaction.foreignCurrencyCode?.trim();
+    final hasForeignSnapshot =
+        transaction.foreignAmount != null ||
+        (foreignCurrencyCode != null && foreignCurrencyCode.isNotEmpty) ||
+        transaction.exchangeRate != null;
+
+    if (_isSameCurrency(mainCurrencyCode, targetCurrencyCode)) {
+      if (!hasForeignSnapshot) {
+        return transaction.copyWith(
+          amount: _normalizeMoney(transaction.amount),
+          currencyCode: targetCurrencyCode,
+          clearForeignAmount: true,
+          clearForeignCurrencyCode: true,
+          clearExchangeRate: true,
+        );
+      }
+
+      if (foreignCurrencyCode == null || foreignCurrencyCode.isEmpty) {
+        throw const TransactionValidationException(
+          'Foreign-currency transactions require a complete snapshot.',
+        );
+      }
+
+      if (_isSameCurrency(foreignCurrencyCode, targetCurrencyCode)) {
+        return transaction.copyWith(
+          amount: _normalizeMoney(transaction.amount),
+          currencyCode: targetCurrencyCode,
+          clearForeignAmount: true,
+          clearForeignCurrencyCode: true,
+          clearExchangeRate: true,
+        );
+      }
+
+      if (transaction.foreignAmount == null ||
+          transaction.exchangeRate == null) {
+        throw const TransactionValidationException(
+          'Foreign-currency transactions require a complete snapshot.',
+        );
+      }
+
+      return transaction.copyWith(
+        amount: _normalizeMoney(transaction.amount),
+        currencyCode: targetCurrencyCode,
+        foreignAmount: _normalizeMoney(transaction.foreignAmount!),
+        foreignCurrencyCode: foreignCurrencyCode.toUpperCase(),
+      );
+    }
+
+    if (transaction.foreignAmount == null ||
+        foreignCurrencyCode == null ||
+        foreignCurrencyCode.isEmpty ||
+        transaction.exchangeRate == null) {
+      throw const TransactionValidationException(
+        'Foreign-currency transactions require a complete snapshot.',
+      );
+    }
+
+    if (!_isSameCurrency(foreignCurrencyCode, mainCurrencyCode)) {
+      throw const TransactionValidationException(
+        'Foreign-currency snapshot must match the entered currency.',
+      );
+    }
+
+    final normalizedAmount = _normalizeMoney(
+      transaction.foreignAmount! * transaction.exchangeRate!,
+    );
+    if (normalizedAmount <= 0) {
+      throw const TransactionValidationException(
+        'Transaction amount must be greater than zero.',
+      );
+    }
+
+    return transaction.copyWith(
+      amount: normalizedAmount,
+      currencyCode: targetCurrencyCode,
+      foreignAmount: _normalizeMoney(transaction.foreignAmount!),
+      foreignCurrencyCode: foreignCurrencyCode.toUpperCase(),
+    );
+  }
+
   void _validateTransaction(TransactionItem transaction) {
+    if (transaction.title.trim().isEmpty) {
+      throw const TransactionValidationException(
+        'Transaction title is required.',
+      );
+    }
+
     if (transaction.amount <= 0) {
       throw const TransactionValidationException(
         'Transaction amount must be greater than zero.',
@@ -185,7 +323,83 @@ class HiveTransactionRepository implements TransactionRepository {
         'Income and expense transactions cannot keep transfer account fields.',
       );
     }
+
+    if (_accountForId(transaction.accountId) == null) {
+      throw const TransactionValidationException(
+        'Income and expense transactions require a valid account.',
+      );
+    }
+
+    final category = _categoryForId(transaction.categoryId);
+    if (category == null) {
+      throw const TransactionValidationException(
+        'Income and expense transactions require a valid category.',
+      );
+    }
+
+    _validateCategoryType(category, type: transaction.type);
   }
 
   bool _hasValue(String? value) => value != null && value.trim().isNotEmpty;
+
+  Account? _accountForId(String? accountId) {
+    if (!_hasValue(accountId)) {
+      return null;
+    }
+
+    final storedAccounts =
+        (_accountsBox.get(HiveStorage.accountsKey) as List<dynamic>? ??
+                const [])
+            .cast<Map<dynamic, dynamic>>();
+    for (final map in storedAccounts) {
+      final account = Account.fromMap(map);
+      if (account.id == accountId) {
+        return account;
+      }
+    }
+
+    return null;
+  }
+
+  CategoryItem? _categoryForId(String? categoryId) {
+    if (!_hasValue(categoryId)) {
+      return null;
+    }
+
+    final storedCategories =
+        (_categoriesBox.get(HiveStorage.categoriesKey) as List<dynamic>? ??
+                const [])
+            .cast<Map<dynamic, dynamic>>();
+    for (final map in storedCategories) {
+      final category = CategoryItem.fromMap(map);
+      if (category.id == categoryId) {
+        return category;
+      }
+    }
+
+    return null;
+  }
+
+  void _validateCategoryType(
+    CategoryItem category, {
+    required TransactionType type,
+  }) {
+    final expectedType = switch (type) {
+      TransactionType.income => CategoryType.income,
+      TransactionType.expense => CategoryType.expense,
+      TransactionType.transfer => CategoryType.expense,
+    };
+
+    if (category.type != expectedType) {
+      throw const TransactionValidationException(
+        'Transaction category does not match the transaction type.',
+      );
+    }
+  }
+
+  double _normalizeMoney(double value) => value.roundToDouble();
+
+  bool _isSameCurrency(String left, String right) {
+    return left.trim().toUpperCase() == right.trim().toUpperCase();
+  }
 }

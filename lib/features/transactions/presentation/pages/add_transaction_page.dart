@@ -24,12 +24,7 @@ class AddTransactionPage extends ConsumerStatefulWidget {
     super.key,
     this.exchangeRateService = const ExchangeRateService(),
     this.initialTransaction,
-    this.initialCreditCardAccount,
     this.initialAccount,
-    this.initialSourceAccount,
-    this.initialDestinationAccount,
-    this.startAsCreditCardPayment = false,
-    this.startAsTransfer = false,
   });
 
   const AddTransactionPage.forAccount({
@@ -37,45 +32,25 @@ class AddTransactionPage extends ConsumerStatefulWidget {
     this.exchangeRateService = const ExchangeRateService(),
     required Account account,
   }) : initialTransaction = null,
-       initialCreditCardAccount = null,
-       initialAccount = account,
-       initialSourceAccount = null,
-       initialDestinationAccount = null,
-       startAsCreditCardPayment = false,
-       startAsTransfer = false;
+       initialAccount = account;
 
   const AddTransactionPage.transferFromAccount({
     super.key,
     this.exchangeRateService = const ExchangeRateService(),
     required Account account,
   }) : initialTransaction = null,
-       initialCreditCardAccount = null,
-       initialAccount = null,
-       initialSourceAccount = account,
-       initialDestinationAccount = null,
-       startAsCreditCardPayment = false,
-       startAsTransfer = true;
+       initialAccount = account;
 
   const AddTransactionPage.creditCardPayment({
     super.key,
     this.exchangeRateService = const ExchangeRateService(),
     this.initialTransaction,
     required Account creditCardAccount,
-  }) : initialCreditCardAccount = creditCardAccount,
-       initialAccount = null,
-       initialSourceAccount = null,
-       initialDestinationAccount = creditCardAccount,
-       startAsCreditCardPayment = true,
-       startAsTransfer = false;
+  }) : initialAccount = creditCardAccount;
 
   final ExchangeRateService exchangeRateService;
   final TransactionItem? initialTransaction;
-  final Account? initialCreditCardAccount;
   final Account? initialAccount;
-  final Account? initialSourceAccount;
-  final Account? initialDestinationAccount;
-  final bool startAsCreditCardPayment;
-  final bool startAsTransfer;
 
   @override
   ConsumerState<AddTransactionPage> createState() => _AddTransactionPageState();
@@ -90,8 +65,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   List<Account> _accounts = const [];
   List<CategoryItem> _categories = const [];
   Account? _selectedAccount;
-  Account? _selectedSourceAccount;
-  Account? _selectedDestinationAccount;
   CategoryItem? _selectedCategory;
   String _selectedEntryCurrencyCode = 'EUR';
   bool _showsAdvancedFields = false;
@@ -107,27 +80,11 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
   bool get _isEditing => widget.initialTransaction != null;
 
-  bool get _isCreditCardPaymentFlow {
-    if (_type != TransactionType.transfer) {
-      return false;
-    }
-
-    return _selectedDestinationAccount?.isCreditCard ?? false;
-  }
-
-  bool get _isDestinationLockedToCreditCard =>
-      widget.initialCreditCardAccount != null && _isCreditCardPaymentFlow;
-
   String get _defaultCurrencyCode =>
       ref.read(appStateProvider).settings.defaultCurrencyCode;
 
-  String get _targetCurrencyCode {
-    if (_type == TransactionType.transfer) {
-      return _selectedSourceAccount?.currencyCode ?? _defaultCurrencyCode;
-    }
-
-    return _selectedAccount?.currencyCode ?? _defaultCurrencyCode;
-  }
+  String get _targetCurrencyCode =>
+      _selectedAccount?.currencyCode ?? _defaultCurrencyCode;
 
   DateTime get _conversionDate => _selectedDate;
 
@@ -157,9 +114,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
               .toStringAsFixed(2),
     );
     _lastFormattedAmountText = _amountController.text;
-    _type = widget.startAsCreditCardPayment || widget.startAsTransfer
-        ? TransactionType.transfer
-        : initialTransaction?.type ?? TransactionType.expense;
+    _type = initialTransaction?.type == TransactionType.income
+        ? TransactionType.income
+        : TransactionType.expense;
     _nameController.addListener(_handleFieldChange);
     _amountController
       ..addListener(_formatAmountInput)
@@ -168,15 +125,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     _accounts = state.accounts;
     _categories = state.categories;
     _selectedAccount = _resolveSelectedAccount(_accounts);
-    _selectedSourceAccount = _resolveSelectedSourceAccount(_accounts);
-    _selectedDestinationAccount = _resolveSelectedDestinationAccount(_accounts);
     _selectedCategory = _resolveSelectedCategory(_categories);
-    if (widget.startAsCreditCardPayment &&
-        !_isEditing &&
-        widget.initialCreditCardAccount != null &&
-        _nameController.text.trim().isEmpty) {
-      _nameController.text = '${widget.initialCreditCardAccount!.name} payment';
-    }
     if (!hasForeignCurrency) {
       _selectedEntryCurrencyCode = _targetCurrencyCode;
       _exchangeRateValue = 1;
@@ -223,17 +172,33 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   }
 
   Account? _resolveSelectedAccount(List<Account> accounts) {
-    final selectedAccount =
-        _selectedAccount ??
-        _accountById(accounts, widget.initialAccount?.id) ??
-        _accountFromInitialTransaction(accounts);
-
+    final selectedAccount = _selectedAccount;
     if (selectedAccount != null) {
       for (final account in accounts) {
         if (account.id == selectedAccount.id) {
           return account;
         }
       }
+    }
+
+    final initialTransaction = widget.initialTransaction;
+    if (initialTransaction != null) {
+      final initialAccount = _accountFromInitialTransaction(accounts);
+      if (initialAccount != null) {
+        return initialAccount;
+      }
+
+      return null;
+    }
+
+    final initialAccount = _accountById(accounts, widget.initialAccount?.id);
+    if (initialAccount != null) {
+      return initialAccount;
+    }
+
+    final preferredAccount = _preferredAccountFrom(accounts);
+    if (preferredAccount != null) {
+      return preferredAccount;
     }
 
     if (accounts.length == 1) {
@@ -258,55 +223,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     return null;
   }
 
-  Account? _resolveSelectedSourceAccount(List<Account> accounts) {
-    final availableAccounts = _availableSourceAccountsFrom(
-      accounts,
-      destinationAccountId: _resolveSelectedDestinationAccount(accounts)?.id,
-      preferNonCreditCards:
-          widget.startAsCreditCardPayment ||
-          widget.initialTransaction?.isCreditCardPayment == true,
-    );
-    final selectedAccount =
-        _selectedSourceAccount ??
-        _accountById(accounts, widget.initialSourceAccount?.id) ??
-        _accountById(accounts, widget.initialTransaction?.sourceAccountId);
-
-    if (selectedAccount != null) {
-      for (final account in availableAccounts) {
-        if (account.id == selectedAccount.id) {
-          return account;
-        }
-      }
-    }
-
-    return availableAccounts.firstOrNull;
-  }
-
-  Account? _resolveSelectedDestinationAccount(List<Account> accounts) {
-    final initialCreditCardAccount = widget.initialCreditCardAccount;
-    if (initialCreditCardAccount != null) {
-      return _accountById(accounts, initialCreditCardAccount.id);
-    }
-
-    final selectedAccount =
-        _selectedDestinationAccount ??
-        _accountById(accounts, widget.initialDestinationAccount?.id) ??
-        _accountById(accounts, widget.initialTransaction?.destinationAccountId);
-
-    if (selectedAccount != null) {
-      return _accountById(accounts, selectedAccount.id);
-    }
-
-    final sourceAccountId = _selectedSourceAccount?.id;
-    for (final account in accounts) {
-      if (account.id != sourceAccountId) {
-        return account;
-      }
-    }
-
-    return null;
-  }
-
   Account? _accountById(List<Account> accounts, String? accountId) {
     if (accountId == null) {
       return null;
@@ -321,21 +237,14 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     return null;
   }
 
-  Account? _firstDifferentAccount(
-    String? excludedAccountId, {
-    bool preferNonCreditCards = false,
-  }) {
-    final availableAccounts = _accounts
-        .where((account) => account.id != excludedAccountId)
-        .toList(growable: false);
-    if (!preferNonCreditCards) {
-      return availableAccounts.firstOrNull;
+  Account? _preferredAccountFrom(List<Account> accounts) {
+    for (final account in accounts) {
+      if (account.isPrimary) {
+        return account;
+      }
     }
 
-    return availableAccounts
-            .where((account) => !account.isCreditCard)
-            .firstOrNull ??
-        availableAccounts.firstOrNull;
+    return null;
   }
 
   CategoryItem? _resolveSelectedCategory(List<CategoryItem> categories) {
@@ -423,55 +332,10 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   List<CategoryItem> get _availableCategories =>
       _availableCategoriesFrom(_categories);
 
-  List<Account> get _availableSourceAccounts {
-    return _availableSourceAccountsFrom(
-      _accounts,
-      destinationAccountId: _selectedDestinationAccount?.id,
-      preferNonCreditCards: _isCreditCardPaymentFlow,
-    );
-  }
-
-  List<Account> get _availableDestinationAccounts {
-    final sourceAccountId = _selectedSourceAccount?.id;
-    if (sourceAccountId == null) {
-      return _accounts;
-    }
-
-    return _accounts
-        .where((account) => account.id != sourceAccountId)
-        .toList(growable: false);
-  }
-
-  List<Account> _availableSourceAccountsFrom(
-    List<Account> accounts, {
-    required String? destinationAccountId,
-    required bool preferNonCreditCards,
-  }) {
-    final availableAccounts = accounts
-        .where((account) => account.id != destinationAccountId)
-        .toList(growable: false);
-    if (!preferNonCreditCards) {
-      return availableAccounts;
-    }
-
-    final nonCreditCardAccounts = availableAccounts
-        .where((account) => !account.isCreditCard)
-        .toList(growable: false);
-    return nonCreditCardAccounts.isEmpty
-        ? availableAccounts
-        : nonCreditCardAccounts;
-  }
-
   List<CategoryItem> _availableCategoriesFrom(List<CategoryItem> categories) {
-    if (_type == TransactionType.transfer) {
-      return const [];
-    }
-
-    final expectedType = switch (_type) {
-      TransactionType.income => CategoryType.income,
-      TransactionType.expense => CategoryType.expense,
-      TransactionType.transfer => CategoryType.expense,
-    };
+    final expectedType = _type == TransactionType.income
+        ? CategoryType.income
+        : CategoryType.expense;
 
     return categories
         .where((category) => category.type == expectedType)
@@ -534,10 +398,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   }
 
   String? get _accountError {
-    if (_type == TransactionType.transfer) {
-      return null;
-    }
-
     if (!_didTrySubmit) {
       return null;
     }
@@ -554,56 +414,12 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   }
 
   String? get _categoryError {
-    if (_type == TransactionType.transfer) {
-      return null;
-    }
-
     if (!_didTrySubmit) {
       return null;
     }
 
     if (_selectedCategory == null) {
       return 'Please choose a category.';
-    }
-
-    return null;
-  }
-
-  String? get _sourceAccountError {
-    if (_type != TransactionType.transfer || !_didTrySubmit) {
-      return null;
-    }
-
-    if (_accounts.length < 2) {
-      return 'Create at least two accounts before adding a transfer.';
-    }
-
-    if (_selectedSourceAccount == null) {
-      return 'Please choose a source account.';
-    }
-
-    if (_selectedSourceAccount?.id == _selectedDestinationAccount?.id) {
-      return 'Source and destination must be different.';
-    }
-
-    return null;
-  }
-
-  String? get _destinationAccountError {
-    if (_type != TransactionType.transfer || !_didTrySubmit) {
-      return null;
-    }
-
-    if (_accounts.length < 2) {
-      return 'Create at least two accounts before adding a transfer.';
-    }
-
-    if (_selectedDestinationAccount == null) {
-      return 'Please choose a destination account.';
-    }
-
-    if (_selectedSourceAccount?.id == _selectedDestinationAccount?.id) {
-      return 'Source and destination must be different.';
     }
 
     return null;
@@ -757,21 +573,13 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
         _exchangeRateError != null ||
         _isFetchingExchangeRate ||
         _accountError != null ||
-        _categoryError != null ||
-        _sourceAccountError != null ||
-        _destinationAccountError != null) {
+        _categoryError != null) {
       return;
     }
 
     final selectedAccount = _selectedAccount;
-    final selectedSourceAccount = _selectedSourceAccount;
-    final selectedDestinationAccount = _selectedDestinationAccount;
     final selectedCategory = _selectedCategory;
-    if (_type == TransactionType.transfer) {
-      if (selectedSourceAccount == null || selectedDestinationAccount == null) {
-        return;
-      }
-    } else if (selectedAccount == null || selectedCategory == null) {
+    if (selectedAccount == null || selectedCategory == null) {
       return;
     }
 
@@ -787,32 +595,17 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       transaction = TransactionItem(
         id: initialTransaction?.id ?? appState.createTransactionId(),
         title: _nameController.text.trim(),
-        categoryId: _type == TransactionType.transfer
-            ? null
-            : selectedCategory!.id,
-        accountId: _type == TransactionType.transfer
-            ? null
-            : selectedAccount!.id,
+        categoryId: selectedCategory.id,
+        accountId: selectedAccount.id,
         amount: _convertedAmountValue,
         currencyCode: _targetCurrencyCode,
         date: _selectedDate,
         type: _type,
-        sourceAccountId: _type == TransactionType.transfer
-            ? selectedSourceAccount!.id
-            : null,
-        destinationAccountId: _type == TransactionType.transfer
-            ? selectedDestinationAccount!.id
-            : null,
         foreignAmount: _usesForeignCurrency ? _enteredAmountValue : null,
         foreignCurrencyCode: _usesForeignCurrency
             ? _selectedEntryCurrencyCode
             : null,
         exchangeRate: _usesForeignCurrency ? _exchangeRateValue : null,
-        transferKind:
-            _type == TransactionType.transfer &&
-                selectedDestinationAccount?.isCreditCard == true
-            ? TransactionTransferKind.creditCardPayment
-            : null,
       );
 
       await appState.saveTransaction(transaction, isEditing: _isEditing);
@@ -854,15 +647,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     setState(() {
       _type = type;
       _selectedCategory = null;
-      if (type == TransactionType.transfer) {
-        _selectedSourceAccount ??= _selectedAccount ?? _accounts.firstOrNull;
-        _selectedDestinationAccount ??= _firstDifferentAccount(
-          _selectedSourceAccount?.id,
-          preferNonCreditCards: false,
-        );
-      } else {
-        _selectedAccount ??= _selectedSourceAccount ?? _accounts.firstOrNull;
-      }
       _selectedEntryCurrencyCode = _targetCurrencyCode;
       _exchangeRateValue = 1;
       _exchangeRateErrorMessage = null;
@@ -895,29 +679,8 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     final theme = Theme.of(context);
     final availableCategories = _availableCategories;
     final showAccountSelector = _accounts.length > 1;
-    final isTransfer = _type == TransactionType.transfer;
-    final isCreditCardPayment = _isCreditCardPaymentFlow;
+    final hasValidCategoriesForType = availableCategories.isNotEmpty;
     final accountItems = _accounts
-        .map(
-          (account) => DropdownSelectorItem<Account>(
-            value: account,
-            label: account.name,
-            subtitle: account.typeLabel,
-            icon: account.icon,
-          ),
-        )
-        .toList(growable: false);
-    final sourceAccountItems = _availableSourceAccounts
-        .map(
-          (account) => DropdownSelectorItem<Account>(
-            value: account,
-            label: account.name,
-            subtitle: account.typeLabel,
-            icon: account.icon,
-          ),
-        )
-        .toList(growable: false);
-    final destinationAccountItems = _availableDestinationAccounts
         .map(
           (account) => DropdownSelectorItem<Account>(
             value: account,
@@ -956,11 +719,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        title: Text(
-          isCreditCardPayment
-              ? (_isEditing ? 'Edit card payment' : 'Add card payment')
-              : (_isEditing ? 'Edit transaction' : 'Add transaction'),
-        ),
+        title: Text(_isEditing ? 'Edit transaction' : 'Add transaction'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -977,13 +736,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isCreditCardPayment
-                          ? (_isEditing
-                                ? 'Update this card payment'
-                                : 'Register a card payment')
-                          : (_isEditing
-                                ? 'Update this entry'
-                                : 'Create a new entry'),
+                      _isEditing ? 'Update this entry' : 'Create a new entry',
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
@@ -1033,11 +786,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                           label: 'Income',
                           icon: Icons.arrow_downward_rounded,
                         ),
-                        SegmentedToggleItem(
-                          value: TransactionType.transfer,
-                          label: 'Transfer',
-                          icon: Icons.swap_horiz_rounded,
-                        ),
                       ],
                       onChanged: _updateType,
                     ),
@@ -1045,20 +793,12 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                     AppTextInput(
                       label: 'Name',
                       controller: _nameController,
-                      hintText: isCreditCardPayment
-                          ? 'Payment name'
-                          : 'Transaction name',
+                      hintText: 'Transaction name',
                       textCapitalization: TextCapitalization.words,
                       errorText: _nameError,
                     ),
                     const SizedBox(height: 16),
-                    if (isTransfer && _accounts.length < 2) ...[
-                      _TransferAccountsBanner(
-                        hasAccounts: _accounts.isNotEmpty,
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    if (!isTransfer && showAccountSelector) ...[
+                    if (showAccountSelector) ...[
                       CustomDropdownSelector<Account>(
                         label: 'Account',
                         hintText: 'Choose an account',
@@ -1073,63 +813,11 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                         },
                       ),
                       const SizedBox(height: 16),
-                    ] else if (!isTransfer && _accounts.length == 1) ...[
-                      _SingleAccountBanner(account: _accounts.first),
-                      const SizedBox(height: 16),
-                    ],
-                    if (isTransfer && _accounts.isNotEmpty) ...[
-                      CustomDropdownSelector<Account>(
-                        label: isCreditCardPayment
-                            ? 'Pay from'
-                            : 'From account',
-                        hintText: 'Choose a source account',
-                        value: _selectedSourceAccount,
-                        items: sourceAccountItems,
-                        errorText: _sourceAccountError,
-                        onChanged: (account) {
-                          setState(() {
-                            _selectedSourceAccount = account;
-                            if (_selectedDestinationAccount?.id == account.id) {
-                              _selectedDestinationAccount =
-                                  _firstDifferentAccount(
-                                    account.id,
-                                    preferNonCreditCards: false,
-                                  );
-                            }
-                          });
-                          _handleTargetCurrencyChanged();
-                        },
+                    ] else if (_accounts.length == 1) ...[
+                      _SingleAccountBanner(
+                        account: _accounts.first,
+                        errorText: _accountError,
                       ),
-                      const SizedBox(height: 16),
-                      if (_isDestinationLockedToCreditCard &&
-                          _selectedDestinationAccount != null)
-                        _SingleAccountBanner(
-                          label: 'Credit card',
-                          account: _selectedDestinationAccount!,
-                        )
-                      else
-                        CustomDropdownSelector<Account>(
-                          label: isCreditCardPayment
-                              ? 'Credit card'
-                              : 'To account',
-                          hintText: isCreditCardPayment
-                              ? 'Choose a credit card'
-                              : 'Choose a destination account',
-                          value: _selectedDestinationAccount,
-                          items: destinationAccountItems,
-                          errorText: _destinationAccountError,
-                          onChanged: (account) {
-                            setState(() {
-                              _selectedDestinationAccount = account;
-                              if (_selectedSourceAccount?.id == account.id) {
-                                _selectedSourceAccount = _firstDifferentAccount(
-                                  account.id,
-                                  preferNonCreditCards: isCreditCardPayment,
-                                );
-                              }
-                            });
-                          },
-                        ),
                       const SizedBox(height: 16),
                     ],
                     AppTextInput(
@@ -1141,23 +829,33 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                       prefixText: _amountPrefix,
                     ),
                     const SizedBox(height: 16),
-                    if (!isTransfer) ...[
-                      CustomDropdownSelector<CategoryItem>(
-                        label: 'Category',
-                        hintText: availableCategories.isEmpty
-                            ? 'No categories available'
-                            : 'Choose a category',
-                        value: _selectedCategory,
-                        items: categoryItems,
-                        errorText: _categoryError,
-                        onChanged: (category) {
-                          setState(() {
-                            _selectedCategory = category;
-                          });
-                        },
+                    CustomDropdownSelector<CategoryItem>(
+                      label: 'Category',
+                      hintText: availableCategories.isEmpty
+                          ? 'No categories available'
+                          : 'Choose a category',
+                      value: _selectedCategory,
+                      items: categoryItems,
+                      errorText: _categoryError,
+                      onChanged: (category) {
+                        setState(() {
+                          _selectedCategory = category;
+                        });
+                      },
+                    ),
+                    if (availableCategories.isEmpty) ...[
+                      const SizedBox(height: 6),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Text(
+                          'Create a category for this transaction type.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 16),
                     ],
+                    const SizedBox(height: 16),
                     Align(
                       alignment: Alignment.centerLeft,
                       child: OutlinedButton.icon(
@@ -1190,22 +888,19 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                         selectedDateLabel: selectedDateLabel,
                         selectedDateHelper: selectedDateHelper,
                         onSelectDate: _pickTransactionDate,
-                        currencySection: isTransfer
-                            ? null
-                            : _AdvancedCurrencySection(
-                                entryCurrencyCode: _selectedEntryCurrencyCode,
-                                targetCurrencyCode: _targetCurrencyCode,
-                                currencyItems: currencyItems,
-                                convertedAmount: _convertedAmountValue,
-                                enteredAmount: _enteredAmountValue,
-                                isFetchingExchangeRate: _isFetchingExchangeRate,
-                                hasResolvedExchangeRate:
-                                    _exchangeRateValue != null,
-                                exchangeRate: _exchangeRateValue,
-                                exchangeRateError: _exchangeRateError,
-                                onCurrencyChanged: _updateEntryCurrency,
-                                onRetryExchangeRate: _syncExchangeRateIfNeeded,
-                              ),
+                        currencySection: _AdvancedCurrencySection(
+                          entryCurrencyCode: _selectedEntryCurrencyCode,
+                          targetCurrencyCode: _targetCurrencyCode,
+                          currencyItems: currencyItems,
+                          convertedAmount: _convertedAmountValue,
+                          enteredAmount: _enteredAmountValue,
+                          isFetchingExchangeRate: _isFetchingExchangeRate,
+                          hasResolvedExchangeRate: _exchangeRateValue != null,
+                          exchangeRate: _exchangeRateValue,
+                          exchangeRateError: _exchangeRateError,
+                          onCurrencyChanged: _updateEntryCurrency,
+                          onRetryExchangeRate: _syncExchangeRateIfNeeded,
+                        ),
                       ),
                     ],
                   ],
@@ -1216,7 +911,10 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 label: _isEditing ? 'Save changes' : 'Save transaction',
                 busyLabel: _isEditing ? 'Saving...' : 'Creating...',
                 isBusy: _isSaving,
-                onPressed: _accounts.isEmpty || _isFetchingExchangeRate
+                onPressed:
+                    _accounts.isEmpty ||
+                        _isFetchingExchangeRate ||
+                        !hasValidCategoriesForType
                     ? null
                     : _saveTransaction,
               ),
@@ -1229,94 +927,76 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 }
 
 class _SingleAccountBanner extends StatelessWidget {
-  const _SingleAccountBanner({required this.account, this.label = 'Account'});
+  const _SingleAccountBanner({required this.account, this.errorText});
 
   final Account account;
-  final String label;
+  final String? errorText;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(account.icon, color: AppColors.iconMuted, size: 20),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.border),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  account.name,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Icon(account.icon, color: AppColors.iconMuted, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Account',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      account.name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TransferAccountsBanner extends StatelessWidget {
-  const _TransferAccountsBanner({required this.hasAccounts});
-
-  final bool hasAccounts;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.swap_horiz_rounded, color: AppColors.textPrimary),
-          const SizedBox(width: 12),
-          Expanded(
+        ),
+        if (errorText case final message?) ...[
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
-              hasAccounts
-                  ? 'Transfers need two different accounts. Add another account to move money between them.'
-                  : 'Create at least two accounts before recording a transfer.',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: AppColors.textPrimary,
+              message,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Colors.red.shade500,
+                fontSize: 12,
+                height: 1.2,
               ),
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 }

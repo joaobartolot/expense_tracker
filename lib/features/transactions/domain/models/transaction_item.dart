@@ -20,16 +20,7 @@ class TransactionItem {
     this.foreignCurrencyCode,
     this.exchangeRate,
     this.transferKind,
-  }) : assert(
-         _isValidConfiguration(
-           type: type,
-           categoryId: categoryId,
-           accountId: accountId,
-           sourceAccountId: sourceAccountId,
-           destinationAccountId: destinationAccountId,
-         ),
-         'Transaction configuration does not match its type.',
-       );
+  });
 
   final String id;
   final String title;
@@ -104,15 +95,15 @@ class TransactionItem {
       'title': title,
       'categoryId': categoryId,
       'accountId': accountId,
-      'amount': amount,
+      'amount': _serializeMoney(amount),
       'currencyCode': currencyCode,
       'date': date.toIso8601String(),
       'type': type.name,
       'sourceAccountId': sourceAccountId,
       'destinationAccountId': destinationAccountId,
-      'destinationAmount': destinationAmount,
+      'destinationAmount': _serializeOptionalMoney(destinationAmount),
       'destinationCurrencyCode': destinationCurrencyCode,
-      'foreignAmount': foreignAmount,
+      'foreignAmount': _serializeOptionalMoney(foreignAmount),
       'foreignCurrencyCode': foreignCurrencyCode,
       'exchangeRate': exchangeRate,
       'transferKind': isTransfer ? resolvedTransferKind.name : null,
@@ -220,25 +211,47 @@ class TransactionItem {
     return -amount;
   }
 
-  static bool _isValidConfiguration({
-    required TransactionType type,
-    required String? categoryId,
-    required String? accountId,
-    required String? sourceAccountId,
-    required String? destinationAccountId,
-  }) {
-    if (type == TransactionType.transfer) {
-      return !_hasValue(categoryId) &&
-          !_hasValue(accountId) &&
-          _hasValue(sourceAccountId) &&
-          _hasValue(destinationAccountId);
-    }
-
-    return _hasValue(categoryId) &&
-        _hasValue(accountId) &&
-        !_hasValue(sourceAccountId) &&
-        !_hasValue(destinationAccountId);
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is TransactionItem &&
+            other.id == id &&
+            other.title == title &&
+            other.categoryId == categoryId &&
+            other.accountId == accountId &&
+            other.amount == amount &&
+            other.currencyCode == currencyCode &&
+            other.date == date &&
+            other.type == type &&
+            other.sourceAccountId == sourceAccountId &&
+            other.destinationAccountId == destinationAccountId &&
+            other.destinationAmount == destinationAmount &&
+            other.destinationCurrencyCode == destinationCurrencyCode &&
+            other.foreignAmount == foreignAmount &&
+            other.foreignCurrencyCode == foreignCurrencyCode &&
+            other.exchangeRate == exchangeRate &&
+            other.transferKind == transferKind;
   }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    title,
+    categoryId,
+    accountId,
+    amount,
+    currencyCode,
+    date,
+    type,
+    sourceAccountId,
+    destinationAccountId,
+    destinationAmount,
+    destinationCurrencyCode,
+    foreignAmount,
+    foreignCurrencyCode,
+    exchangeRate,
+    transferKind,
+  );
 
   static bool _hasValue(String? value) => value != null && value.isNotEmpty;
 
@@ -249,6 +262,18 @@ class TransactionItem {
     }
 
     return stringValue;
+  }
+
+  static int _serializeMoney(double value) {
+    return value.round();
+  }
+
+  static int? _serializeOptionalMoney(double? value) {
+    if (value == null) {
+      return null;
+    }
+
+    return _serializeMoney(value);
   }
 
   static TransactionType _transactionTypeFromName(String? value) {
