@@ -314,3 +314,18 @@ Use conventional commit prefixes:
 - `wip:`
 
 Keep messages short, clear, and scoped to the change.
+
+## Retrofit Testing for Existing Features
+
+For features that already exist without tests, the agent may begin with a behavior-extraction phase before writing tests.
+
+In this phase, the agent must:
+
+- Inspect the existing implementation
+- Propose the observable behaviors the feature currently appears to support
+- Separate likely intended behavior from possible bugs or accidental implementation details
+- Surface ambiguities for user review
+
+The agent must not write tests for an existing feature until the proposed behavior has been reviewed or approved by the user.
+
+The current implementation must not be treated as the source of truth by default.

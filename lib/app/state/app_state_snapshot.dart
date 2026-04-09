@@ -228,6 +228,16 @@ class AppStateSnapshot {
     return categoriesById[categoryId];
   }
 
+  TransactionItem? transactionById(String transactionId) {
+    for (final transaction in transactions) {
+      if (transaction.id == transactionId) {
+        return transaction;
+      }
+    }
+
+    return null;
+  }
+
   double balanceForAccount(String accountId) {
     return effectiveBalances[accountId] ??
         accountsById[accountId]?.openingBalance ??

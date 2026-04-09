@@ -96,7 +96,21 @@ class HomePage extends ConsumerWidget {
       return;
     }
 
-    await ref.read(appStateProvider.notifier).deleteTransaction(transaction.id);
+    try {
+      await ref
+          .read(appStateProvider.notifier)
+          .deleteTransaction(transaction.id);
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not delete the transaction. Please try again.'),
+        ),
+      );
+    }
   }
 
   Future<void> _showTransactionActionMenu(

@@ -8,10 +8,18 @@ import 'package:expense_tracker/features/transactions/presentation/pages/add_tra
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class TransactionDetailPage extends ConsumerWidget {
+class TransactionDetailPage extends ConsumerStatefulWidget {
   const TransactionDetailPage({super.key, required this.transactionId});
 
   final String transactionId;
+
+  @override
+  ConsumerState<TransactionDetailPage> createState() =>
+      _TransactionDetailPageState();
+}
+
+class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
+  TransactionItem? _cachedTransaction;
 
   Future<void> _editTransaction(
     BuildContext context,
@@ -33,7 +41,6 @@ class TransactionDetailPage extends ConsumerWidget {
 
   Future<void> _deleteTransaction(
     BuildContext context,
-    WidgetRef ref,
     TransactionItem transaction,
   ) async {
     final didConfirm = await showDialog<bool>(
@@ -66,7 +73,22 @@ class TransactionDetailPage extends ConsumerWidget {
       return;
     }
 
-    await ref.read(appStateProvider.notifier).deleteTransaction(transaction.id);
+    try {
+      await ref
+          .read(appStateProvider.notifier)
+          .deleteTransaction(transaction.id);
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not delete the transaction. Please try again.'),
+        ),
+      );
+      return;
+    }
 
     if (!context.mounted) {
       return;
@@ -87,11 +109,17 @@ class TransactionDetailPage extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final state = ref.watch(appStateProvider);
-    final transaction = state.transactions
-        .where((item) => item.id == transactionId)
-        .firstOrNull;
+    final liveTransaction = state.transactionById(widget.transactionId);
+    final transaction = liveTransaction ?? _cachedTransaction;
+
+    if (liveTransaction != null &&
+        (_cachedTransaction == null ||
+            _cachedTransaction!.id != liveTransaction.id ||
+            _cachedTransaction != liveTransaction)) {
+      _cachedTransaction = liveTransaction;
+    }
 
     if (transaction == null) {
       return Scaffold(
@@ -153,9 +181,38 @@ class TransactionDetailPage extends ConsumerWidget {
         surfaceTintColor: Colors.transparent,
         title: const Text('Transaction details'),
       ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _editTransaction(context, transaction),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Edit'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => _deleteTransaction(context, transaction),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.danger,
+                    foregroundColor: AppColors.white,
+                  ),
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Delete'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
           children: [
             Container(
               padding: const EdgeInsets.all(24),
@@ -295,31 +352,6 @@ class TransactionDetailPage extends ConsumerWidget {
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _editTransaction(context, transaction),
-                    icon: const Icon(Icons.edit_outlined),
-                    label: const Text('Edit'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () =>
-                        _deleteTransaction(context, ref, transaction),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.danger,
-                      foregroundColor: AppColors.white,
-                    ),
-                    icon: const Icon(Icons.delete_outline),
-                    label: const Text('Delete'),
-                  ),
-                ),
-              ],
             ),
           ],
         ),

@@ -97,7 +97,19 @@ class _TransactionHistoryPageState
       return;
     }
 
-    await notifier.deleteTransaction(transaction.id);
+    try {
+      await notifier.deleteTransaction(transaction.id);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not delete the transaction. Please try again.'),
+        ),
+      );
+    }
   }
 
   Future<void> _showTransactionActionMenu(
@@ -246,7 +258,7 @@ class _TransactionHistoryPageState
     }
 
     final position = _scrollController.position;
-    if (position.extentAfter > 480) {
+    if (position.extentAfter > 800) {
       return;
     }
 
@@ -262,7 +274,7 @@ class _TransactionHistoryPageState
       _isLoadingMore = true;
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    Future<void>.delayed(const Duration(milliseconds: 16), () {
       if (!mounted) {
         return;
       }
@@ -303,6 +315,36 @@ class _TransactionHistoryPageState
     };
   }
 
+  Widget _buildSearchField(AppStateSnapshot state) {
+    return TextField(
+      controller: _searchController,
+      onChanged: (value) {
+        setState(() {
+          _visibleCount = _pageSize;
+        });
+        ref.read(appStateProvider.notifier).updateHistorySearchQuery(value);
+      },
+      decoration: InputDecoration(
+        hintText: 'Search transactions',
+        prefixIcon: const Icon(Icons.search_rounded),
+        suffixIcon: state.historySearchQuery.isEmpty
+            ? null
+            : IconButton(
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() {
+                    _visibleCount = _pageSize;
+                  });
+                  ref
+                      .read(appStateProvider.notifier)
+                      .updateHistorySearchQuery('');
+                },
+                icon: const Icon(Icons.close_rounded),
+              ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(appStateProvider);
@@ -337,7 +379,7 @@ class _TransactionHistoryPageState
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (groupedTransactions.isEmpty) {
+          if (groupedTransactions.isEmpty && state.historySearchQuery.isEmpty) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -352,88 +394,85 @@ class _TransactionHistoryPageState
             );
           }
 
-          return ListView(
-            controller: _scrollController,
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+          return Stack(
             children: [
-              TextField(
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _visibleCount = _pageSize;
-                  });
-                  ref
-                      .read(appStateProvider.notifier)
-                      .updateHistorySearchQuery(value);
-                },
-                decoration: InputDecoration(
-                  hintText: 'Search transactions',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  suffixIcon: state.historySearchQuery.isEmpty
-                      ? null
-                      : IconButton(
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _visibleCount = _pageSize;
-                            });
-                            ref
-                                .read(appStateProvider.notifier)
-                                .updateHistorySearchQuery('');
-                          },
-                          icon: const Icon(Icons.close_rounded),
+              ListView(
+                controller: _scrollController,
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 64),
+                children: [
+                  _buildSearchField(state),
+                  const SizedBox(height: 20),
+                  if (groupedTransactions.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 32,
+                      ),
+                      child: Text(
+                        _emptyLabel(state),
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: AppColors.textSecondary,
                         ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              ...groupedTransactions.entries.map(
-                (entry) => TransactionGroup(
-                  label: entry.key,
-                  transactions: entry.value,
-                  displayAmountFor: (transaction) =>
-                      state.convertedAmountForTransaction(transaction.id) ??
-                      transaction.amount,
-                  displayCurrencyCodeFor: (transaction) =>
-                      state.convertedAmountForTransaction(transaction.id) !=
-                          null
-                      ? state.settings.defaultCurrencyCode
-                      : transaction.currencyCode,
-                  categoryNameFor: (transaction) =>
-                      transaction.isCreditCardPayment
-                      ? 'Card payment'
-                      : transaction.type == TransactionType.transfer
-                      ? 'Transfer'
-                      : state.categoryById(transaction.categoryId)?.name ??
-                            'Unknown category',
-                  categoryIconFor: (transaction) =>
-                      transaction.isCreditCardPayment
-                      ? Icons.credit_card_rounded
-                      : transaction.type == TransactionType.transfer
-                      ? Icons.swap_horiz_rounded
-                      : state.categoryById(transaction.categoryId)?.icon ??
-                            Icons.sell_outlined,
-                  accountNameFor: (transaction) =>
-                      state.accountById(transaction.primaryAccountId)?.name ??
-                      'Unknown account',
-                  destinationAccountNameFor: (transaction) =>
-                      state.accountById(transaction.secondaryAccountId)?.name,
-                  onTransactionTap: _openTransactionDetails,
-                  onTransactionLongPressStart: _showTransactionActionMenu,
-                ),
-              ),
-              if (_isLoadingMore)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8, bottom: 12),
-                  child: Center(
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2.4),
+                      ),
+                    ),
+                  ...groupedTransactions.entries.map(
+                    (entry) => TransactionGroup(
+                      label: entry.key,
+                      transactions: entry.value,
+                      displayAmountFor: (transaction) =>
+                          state.convertedAmountForTransaction(transaction.id) ??
+                          transaction.amount,
+                      displayCurrencyCodeFor: (transaction) =>
+                          state.convertedAmountForTransaction(transaction.id) !=
+                              null
+                          ? state.settings.defaultCurrencyCode
+                          : transaction.currencyCode,
+                      categoryNameFor: (transaction) =>
+                          transaction.isCreditCardPayment
+                          ? 'Card payment'
+                          : transaction.type == TransactionType.transfer
+                          ? 'Transfer'
+                          : state.categoryById(transaction.categoryId)?.name ??
+                                'Unknown category',
+                      categoryIconFor: (transaction) =>
+                          transaction.isCreditCardPayment
+                          ? Icons.credit_card_rounded
+                          : transaction.type == TransactionType.transfer
+                          ? Icons.swap_horiz_rounded
+                          : state.categoryById(transaction.categoryId)?.icon ??
+                                Icons.sell_outlined,
+                      accountNameFor: (transaction) =>
+                          state
+                              .accountById(transaction.primaryAccountId)
+                              ?.name ??
+                          'Unknown account',
+                      destinationAccountNameFor: (transaction) => state
+                          .accountById(transaction.secondaryAccountId)
+                          ?.name,
+                      onTransactionTap: _openTransactionDetails,
+                      onTransactionLongPressStart: _showTransactionActionMenu,
                     ),
                   ),
-                )
-              else if (hasMore)
-                const SizedBox(height: 24),
+                ],
+              ),
+              if (_isLoadingMore || hasMore)
+                IgnorePointer(
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          value: _isLoadingMore ? null : 0,
+                          strokeWidth: 2.4,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           );
         },
