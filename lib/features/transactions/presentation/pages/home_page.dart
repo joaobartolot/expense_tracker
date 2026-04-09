@@ -283,6 +283,10 @@ class HomePage extends ConsumerWidget {
             _EmptyPeriodState(
               hasAccounts: state.accounts.isNotEmpty,
               periodLabel: periodLabel,
+              showViewMore: state.transactions.isNotEmpty,
+              onViewMore: state.transactions.isNotEmpty
+                  ? () => _openTransactionHistory(context)
+                  : null,
             )
           else
             ...groupedTransactions.entries.map(
@@ -326,7 +330,8 @@ class HomePage extends ConsumerWidget {
                     ),
               ),
             ),
-          if (state.transactions.isNotEmpty) ...[
+          if (groupedTransactions.isNotEmpty &&
+              state.transactions.isNotEmpty) ...[
             const SizedBox(height: 4),
             Center(
               child: TextButton(
@@ -345,10 +350,14 @@ class _EmptyPeriodState extends StatelessWidget {
   const _EmptyPeriodState({
     required this.hasAccounts,
     required this.periodLabel,
+    required this.showViewMore,
+    required this.onViewMore,
   });
 
   final bool hasAccounts;
   final String periodLabel;
+  final bool showViewMore;
+  final VoidCallback? onViewMore;
 
   @override
   Widget build(BuildContext context) {
@@ -398,6 +407,10 @@ class _EmptyPeriodState extends StatelessWidget {
               color: AppColors.textSecondary,
             ),
           ),
+          if (showViewMore) ...[
+            const SizedBox(height: 18),
+            TextButton(onPressed: onViewMore, child: const Text('View more')),
+          ],
         ],
       ),
     );

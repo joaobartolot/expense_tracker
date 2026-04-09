@@ -376,6 +376,30 @@ void main() {
     );
 
     test(
+      'deleteCategory rejects categories with linked recurring transactions',
+      () async {
+        transactionRepository.transactions = const [];
+        final container = seedAndBuildContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(appStateProvider.notifier);
+        await _settle();
+
+        await expectLater(
+          notifier.deleteCategory(
+            _category(
+              id: 'income-category',
+              name: 'Salary',
+              type: CategoryType.income,
+            ),
+          ),
+          throwsA(isA<LinkedEntityException>()),
+        );
+
+        expect(categoryRepository.deletedCategoryIds, isEmpty);
+      },
+    );
+
+    test(
       'deleteCategoryWithTransactions deletes linked transactions before deleting the category',
       () async {
         recurringTransactionRepository.recurringTransactions = [

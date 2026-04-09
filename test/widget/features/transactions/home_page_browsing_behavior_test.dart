@@ -6,6 +6,7 @@ import 'package:expense_tracker/features/transactions/domain/models/transaction_
 import 'package:expense_tracker/features/transactions/presentation/pages/add_transaction_page.dart';
 import 'package:expense_tracker/features/transactions/presentation/pages/home_page.dart';
 import 'package:expense_tracker/features/transactions/presentation/pages/transaction_detail_page.dart';
+import 'package:expense_tracker/features/transactions/presentation/pages/transaction_history_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -87,8 +88,19 @@ void main() {
 
         expect(find.textContaining('Nothing recorded for'), findsOneWidget);
         expect(find.text('Old lunch'), findsNothing);
+        expect(find.text('View more'), findsOneWidget);
       },
     );
+
+    testWidgets('hides view more when there are no transactions anywhere', (
+      tester,
+    ) async {
+      final environment = DeleteTestEnvironment();
+
+      await environment.pumpApp(tester, home: const Scaffold(body: HomePage()));
+
+      expect(find.text('View more'), findsNothing);
+    });
 
     testWidgets('shows balance and activity summaries for the current period', (
       tester,
@@ -325,6 +337,28 @@ void main() {
         find.text('Create an account before adding your first transaction.'),
         findsOneWidget,
       );
+    });
+
+    testWidgets('tapping view more opens the transaction history page', (
+      tester,
+    ) async {
+      final environment = DeleteTestEnvironment(
+        transactions: [
+          expenseTransaction(
+            id: 'tx-old',
+            title: 'Old lunch',
+            date: daysAgo(50),
+          ),
+        ],
+      );
+
+      await environment.pumpApp(tester, home: const Scaffold(body: HomePage()));
+
+      await tapVisible(tester, find.text('View more'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TransactionHistoryPage), findsOneWidget);
+      expect(find.text('Transactions'), findsOneWidget);
     });
   });
 }

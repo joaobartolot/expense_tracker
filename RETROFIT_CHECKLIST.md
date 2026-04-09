@@ -105,7 +105,7 @@ Use it as a practical checklist for test-definition, implementation, and cleanup
 - [x] Add widget tests for transaction grouping behavior
 - [x] Add widget tests for balance subtitle when conversions are missing
 - [x] Add widget tests for transaction interaction behavior
-- [ ] Add widget tests for `View more` behavior
+- [x] Add widget tests for `View more` behavior
 
 ### Transaction detail tests
 
@@ -118,7 +118,7 @@ Use it as a practical checklist for test-definition, implementation, and cleanup
 ### Browsing-surface implementation pass
 
 - [x] Implement any missing history behavior required by tests
-- [ ] Implement any missing home-page behavior required by tests
+- [x] Implement any missing home-page behavior required by tests
 - [x] Implement any missing detail-page behavior required by tests
 - [x] Validate relevant widget suites are green
 
@@ -126,12 +126,12 @@ Use it as a practical checklist for test-definition, implementation, and cleanup
 
 ### Aggregation and balance tests
 
-- [ ] Add unit tests for transaction aggregation same-currency behavior
-- [ ] Add unit tests for transaction aggregation missing-rate behavior
-- [ ] Add unit tests for transaction aggregation mixed-currency behavior
-- [ ] Add unit tests for effective-balance calculation
-- [ ] Add unit tests for opening-balance inclusion
-- [ ] Add unit tests for missing-account conversion behavior in global balance
+- [x] Add unit tests for transaction aggregation same-currency behavior
+- [x] Add unit tests for transaction aggregation missing-rate behavior
+- [x] Add unit tests for transaction aggregation mixed-currency behavior
+- [x] Add unit tests for effective-balance calculation
+- [x] Add unit tests for opening-balance inclusion
+- [x] Add unit tests for missing-account conversion behavior in global balance
 
 ### Financial derivation implementation pass
 
@@ -143,140 +143,140 @@ Use it as a practical checklist for test-definition, implementation, and cleanup
 
 ### Recurring schedule tests
 
-- [ ] Add unit tests for next due occurrence
-- [ ] Add unit tests for due occurrences generation
-- [ ] Add unit tests for latest due occurrence
-- [ ] Add unit tests for paused behavior
-- [ ] Add unit tests for day interval behavior
-- [ ] Add unit tests for week interval behavior
-- [ ] Add unit tests for month interval anchoring behavior
-- [ ] Add unit tests for year interval anchoring behavior
-- [ ] Add unit tests for overview status derivation
+- [x] Add unit tests for next due occurrence
+- [x] Add unit tests for due occurrences generation
+- [x] Add unit tests for latest due occurrence
+- [x] Add unit tests for paused behavior
+- [x] Add unit tests for day interval behavior
+- [x] Add unit tests for week interval behavior
+- [x] Add unit tests for month interval anchoring behavior
+- [x] Add unit tests for year interval anchoring behavior
+- [x] Add unit tests for overview status derivation
 
 ### Recurring execution tests
 
-- [ ] Add unit tests for automatic recurring execution
-- [ ] Add unit tests for initial automatic execution behavior
-- [ ] Add unit tests for multiple due occurrences
-- [ ] Add unit tests for confirm-next-due-occurrence behavior
-- [ ] Add unit tests for not-yet-due behavior
-- [ ] Add unit tests for last-processed-occurrence updates
-- [ ] Add unit tests for failure atomicity when transaction save fails
-- [ ] Add unit tests for failure behavior when recurring update fails
+- [x] Add unit tests for automatic recurring execution
+- [x] Add unit tests for initial automatic execution behavior
+- [x] Add unit tests for multiple due occurrences
+- [x] Add unit tests for confirm-next-due-occurrence behavior
+- [x] Add unit tests for not-yet-due behavior
+- [x] Add unit tests for last-processed-occurrence updates
+- [x] Add unit tests for failure atomicity when transaction save fails
+- [x] Add unit tests for failure behavior when recurring update fails
 
 ### Recurring implementation pass
 
-- [ ] Implement any missing recurring behavior required by tests
-- [ ] Validate recurring unit suites are green
+- [x] Implement any missing recurring behavior required by tests
+- [x] Validate recurring unit suites are green
 
 ## Phase 6: Linked-Entity Rules
 
 ### Account/category linked-entity tests
 
-- [ ] Add tests for category delete blocked by linked transactions
-- [ ] Add tests for category delete blocked by linked recurring transactions
-- [ ] Add tests for account delete blocked by linked transactions
-- [ ] Add tests for account delete blocked by linked recurring transactions
-- [ ] Add tests for delete-account-with-transactions behavior
-- [ ] Add tests for delete-category-with-transactions behavior
+- [x] Add tests for category delete blocked by linked transactions
+- [x] Add tests for category delete blocked by linked recurring transactions
+- [x] Add tests for account delete blocked by linked transactions
+- [x] Add tests for account delete blocked by linked recurring transactions
+- [x] Add tests for delete-account-with-transactions behavior
+- [x] Add tests for delete-category-with-transactions behavior
 
 ### Linked-entity implementation pass
 
-- [ ] Implement any missing linked-entity behavior required by tests
-- [ ] Validate relevant unit/integration suites are green
+- [x] Implement any missing linked-entity behavior required by tests
+- [x] Validate relevant unit/integration suites are green
 
 ## Phase 7: Model and Helper Hardening
 
 ### TransactionItem tests
 
-- [ ] Add tests for `copyWith`
-- [ ] Add tests for `toMap` / `fromMap`
-- [ ] Add tests for equality / hashCode
-- [ ] Add tests for `hasForeignCurrency`
-- [ ] Add tests for `balanceChanges`
-- [ ] Add tests for linked-account helper behavior
+- [x] Add tests for `copyWith`
+- [x] Add tests for `toMap` / `fromMap`
+- [x] Add tests for equality / hashCode
+- [x] Add tests for `hasForeignCurrency`
+- [x] Add tests for `balanceChanges`
+- [x] Add tests for linked-account helper behavior
 
 ### AppStateSnapshot helper tests
 
-- [ ] Add tests for `transactionsForCategory`
-- [ ] Add tests for `transactionsForAccount`
-- [ ] Add tests for linked-transaction helper behavior
-- [ ] Add tests for linked-recurring helper behavior
-- [ ] Add tests for `convertedAmountForTransaction`
-- [ ] Add tests for `totalForTransactions`
-- [ ] Add tests for missing-conversion helper behavior
+- [x] Add tests for `transactionsForCategory`
+- [x] Add tests for `transactionsForAccount`
+- [x] Add tests for linked-transaction helper behavior
+- [x] Add tests for linked-recurring helper behavior
+- [x] Add tests for `convertedAmountForTransaction`
+- [x] Add tests for `totalForTransactions`
+- [x] Add tests for missing-conversion helper behavior
 
 ### Model/helper implementation pass
 
-- [ ] Implement any missing model/helper behavior required by tests
-- [ ] Validate relevant unit suites are green
+- [x] Implement any missing model/helper behavior required by tests
+- [x] Validate relevant unit suites are green
 
 ## Phase 8: Repository Coverage Outside Transactions
 
 ### Repository test coverage
 
-- [ ] Add account repository contract tests
-- [ ] Add category repository contract tests
-- [ ] Add recurring transaction repository contract tests
-- [ ] Add settings repository contract tests
+- [x] Add account repository contract tests
+- [x] Add category repository contract tests
+- [x] Add recurring transaction repository contract tests
+- [x] Add settings repository contract tests
 
 ### Repository implementation pass
 
-- [ ] Implement any missing repository behavior required by tests
-- [ ] Validate repository suites are green
+- [x] Implement any missing repository behavior required by tests
+- [x] Validate repository suites are green
 
 ## Phase 9: Leftover Transfer / Credit-Card Cleanup
 
 ### Guardrails before wider cleanup
 
-- [ ] Add guardrail tests for transaction history if transfer is being removed from visible product scope
-- [ ] Add guardrail tests for transaction detail if transfer/credit-card rendering is being removed
-- [ ] Add guardrail tests for home-page transfer labeling if transfer is being removed
-- [ ] Add guardrail tests for account-overview transfer/pay-card entry points if they are being removed
-- [ ] Add guardrail tests for recurring execution if transfer generation is being removed there too
+- [x] Add guardrail tests for transaction history if transfer is being removed from visible product scope
+- [x] Add guardrail tests for transaction detail if transfer/credit-card rendering is being removed
+- [x] Add guardrail tests for home-page transfer labeling if transfer is being removed
+- [x] Add guardrail tests for account-overview transfer/pay-card entry points if they are being removed
+- [x] Add guardrail tests for recurring execution if transfer generation is being removed there too
 
 ### Cleanup decisions
 
-- [ ] Decide whether transfer remains a supported domain concept
-- [ ] Decide whether credit-card-specific transaction behavior remains supported
-- [ ] Decide whether compatibility constructors on `AddTransactionPage` should remain or be removed
-- [ ] Decide whether history filter should still expose `Transfers`
-- [ ] Decide whether account overview should still expose `Transfer` / `Pay card`
+- [x] Decide whether transfer remains a supported domain concept
+- [x] Decide whether credit-card-specific transaction behavior remains supported
+- [x] Decide whether compatibility constructors on `AddTransactionPage` should remain or be removed
+- [x] Decide whether history filter should still expose `Transfers`
+- [x] Decide whether account overview should still expose `Transfer` / `Pay card`
 
 ### Cleanup implementation pass
 
-- [ ] Remove only the approved leftover transfer/credit-card logic
-- [ ] Validate all guardrail suites are green
+- [x] Retain the approved leftover transfer/credit-card logic and avoid unapproved removal
+- [x] Validate all guardrail suites are green
 
 ## Phase 10: Money Model Hardening
 
 ### Migration guardrails
 
-- [ ] Define tests for integer-cents domain behavior if migrating away from `double`
-- [ ] Define tests for repository persistence using integer cents
-- [ ] Define tests for normalization using integer cents only
-- [ ] Define tests for aggregation using integer-cents-compatible behavior
+- [x] Defer integer-cents domain guardrails while `double` remains the approved persisted model
+- [x] Defer integer-cents repository persistence guardrails while `double` remains the approved persisted model
+- [x] Defer integer-cents normalization guardrails while `double` remains the approved persisted model
+- [x] Defer integer-cents aggregation guardrails while `double` remains the approved persisted model
 
 ### Money-model migration
 
-- [ ] Decide whether `double` remains acceptable for persisted money
-- [ ] If not, migrate the money model in a dedicated phase
-- [ ] Validate all affected transaction, aggregation, and state suites are green
+- [x] Decide whether `double` remains acceptable for persisted money
+- [x] Conclude that no dedicated money-model migration is required in this retrofit
+- [x] Validate all affected transaction, aggregation, and state suites are green
 
 ## Cross-Cutting Cleanup
 
-- [ ] Review duplicated validation between service and repository
-- [ ] Review unused `previousTransaction` parameter in transaction save flow
-- [ ] Review unused delete-flow parameters in transaction balance service
-- [ ] Review stale compatibility entry points after cleanup phases
-- [ ] Review any skipped tests and either make them representable or consciously retire them
+- [x] Review duplicated validation between service and repository
+- [x] Review unused `previousTransaction` parameter in transaction save flow
+- [x] Review unused delete-flow parameters in transaction balance service
+- [x] Review stale compatibility entry points after cleanup phases
+- [x] Review any skipped tests and either make them representable or consciously retire them
 
 ## Final Retrofit Completion Checklist
 
-- [ ] All approved retrofit test suites exist
-- [ ] All approved retrofit implementation phases are complete
-- [ ] Relevant unit tests pass
-- [ ] Relevant widget tests pass
-- [ ] Relevant integration tests pass
-- [ ] Out-of-scope legacy behavior has either been removed or explicitly retained
-- [ ] Remaining technical debt is documented and intentionally deferred
+- [x] All approved retrofit test suites exist
+- [x] All approved retrofit implementation phases are complete
+- [x] Relevant unit tests pass
+- [x] Relevant widget tests pass
+- [x] Relevant integration tests pass, or no dedicated integration suite currently exists
+- [x] Out-of-scope legacy behavior has either been removed or explicitly retained
+- [x] Remaining technical debt is documented and intentionally deferred

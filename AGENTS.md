@@ -57,6 +57,10 @@ Before completing implementation or committing:
 
 - Run relevant test suites
 - Ensure tests pass
+- Generate coverage with `flutter test --coverage`
+- Summarize validation and coverage results clearly for the user before any commit
+- Ask for explicit confirmation before committing and pushing
+- Default push target is `main` unless the user says otherwise
 
 ---
 
@@ -255,6 +259,9 @@ Before committing:
 - Run all relevant unit tests
 - Run all relevant integration tests
 - Ensure all tests pass
+- Run `flutter test --coverage`
+- Present the test and coverage summary to the user in a clear format
+- Wait for user confirmation before commit and push
 
 A feature is not complete if its tests are failing.
 
