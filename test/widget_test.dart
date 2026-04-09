@@ -1,25 +1,44 @@
 import 'package:expense_tracker/app/app.dart';
+import 'package:expense_tracker/features/auth/domain/models/auth_user.dart';
+import 'package:expense_tracker/features/auth/domain/repositories/auth_repository.dart';
+import 'package:expense_tracker/features/auth/presentation/state/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
-  testWidgets('home page renders repository data and adds a transaction', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(const ExpenseTrackerApp());
-    await tester.pumpAndSettle();
+  testWidgets(
+    'app shows the auth loading view while session state is pending',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(_PendingAuthRepository()),
+          ],
+          child: const ExpenseTrackerApp(),
+        ),
+      );
 
-    expect(find.text('Hello'), findsOneWidget);
-    expect(find.text('Current balance'), findsOneWidget);
-    expect(find.text('Transactions'), findsOneWidget);
-    expect(find.byIcon(Icons.add), findsOneWidget);
-    expect(find.text('Salary'), findsOneWidget);
-    expect(find.text('Sample expense'), findsNothing);
+      expect(find.text('Checking your session...'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    },
+  );
+}
 
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pumpAndSettle();
+class _PendingAuthRepository implements AuthRepository {
+  @override
+  AuthUser? get currentUser => null;
 
-    expect(find.text('Sample expense'), findsOneWidget);
-    expect(find.text('Mock added transaction'), findsOneWidget);
-  });
+  @override
+  Stream<AuthUser?> authStateChanges() => const Stream<AuthUser?>.empty();
+
+  @override
+  Future<AuthUser> signInWithGoogle() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> signOut() {
+    throw UnimplementedError();
+  }
 }
