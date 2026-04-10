@@ -58,21 +58,31 @@ class _CustomDropdownSelectorState<T> extends State<CustomDropdownSelector<T>>
     return null;
   }
 
+  void _setExpanded(bool isExpanded) {
+    if (_isExpanded == isExpanded) {
+      return;
+    }
+
+    setState(() {
+      _isExpanded = isExpanded;
+    });
+  }
+
   void _toggleExpanded() {
     if (widget.items.isEmpty) {
       return;
     }
 
-    setState(() {
-      _isExpanded = !_isExpanded;
-    });
+    _setExpanded(!_isExpanded);
+  }
+
+  void _closeExpanded() {
+    _setExpanded(false);
   }
 
   void _selectItem(T value) {
     widget.onChanged(value);
-    setState(() {
-      _isExpanded = false;
-    });
+    _closeExpanded();
   }
 
   @override
@@ -92,92 +102,100 @@ class _CustomDropdownSelectorState<T> extends State<CustomDropdownSelector<T>>
           ),
         ),
         const SizedBox(height: 10),
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: hasError
-                  ? Colors.red.shade400
-                  : _isExpanded
-                  ? AppColors.brand
-                  : AppColors.border,
-              width: 1.4,
+        TapRegion(
+          onTapOutside: (_) => _closeExpanded(),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: hasError
+                    ? Colors.red.shade400
+                    : _isExpanded
+                    ? AppColors.brand
+                    : AppColors.border,
+                width: 1.4,
+              ),
+              boxShadow: _isExpanded
+                  ? const [
+                      BoxShadow(
+                        color: AppColors.shadow,
+                        blurRadius: 20,
+                        offset: Offset(0, 10),
+                      ),
+                    ]
+                  : null,
             ),
-            boxShadow: _isExpanded
-                ? const [
-                    BoxShadow(
-                      color: AppColors.shadow,
-                      blurRadius: 20,
-                      offset: Offset(0, 10),
+            child: Column(
+              children: [
+                InkWell(
+                  onTap: _toggleExpanded,
+                  borderRadius: BorderRadius.circular(24),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 16,
                     ),
-                  ]
-                : null,
-          ),
-          child: Column(
-            children: [
-              InkWell(
-                onTap: _toggleExpanded,
-                borderRadius: BorderRadius.circular(24),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 16,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: selectedItem == null
-                            ? Text(
-                                widget.hintText,
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  color: AppColors.textSecondary,
-                                ),
-                              )
-                            : _DropdownSelectorContent(item: selectedItem),
-                      ),
-                      const SizedBox(width: 12),
-                      AnimatedRotation(
-                        turns: _isExpanded ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 180),
-                        child: Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          color: widget.items.isEmpty
-                              ? AppColors.textSecondary
-                              : AppColors.iconMuted,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: selectedItem == null
+                              ? Text(
+                                  widget.hintText,
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                )
+                              : _DropdownSelectorContent(item: selectedItem),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  bottom: Radius.circular(24),
-                ),
-                child: AnimatedCrossFade(
-                  firstChild: const SizedBox.shrink(),
-                  secondChild: Column(
-                    children: [
-                      Container(height: 1, color: AppColors.background),
-                      for (var index = 0; index < widget.items.length; index++)
-                        _DropdownSelectorOption<T>(
-                          item: widget.items[index],
-                          isSelected: widget.items[index].value == widget.value,
-                          isLast: index == widget.items.length - 1,
-                          onTap: () => _selectItem(widget.items[index].value),
+                        const SizedBox(width: 12),
+                        AnimatedRotation(
+                          turns: _isExpanded ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 180),
+                          child: Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: widget.items.isEmpty
+                                ? AppColors.textSecondary
+                                : AppColors.iconMuted,
+                          ),
                         ),
-                    ],
+                      ],
+                    ),
                   ),
-                  crossFadeState: _isExpanded
-                      ? CrossFadeState.showSecond
-                      : CrossFadeState.showFirst,
-                  duration: const Duration(milliseconds: 180),
-                  sizeCurve: Curves.easeOutCubic,
                 ),
-              ),
-            ],
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(24),
+                  ),
+                  child: AnimatedCrossFade(
+                    firstChild: const SizedBox.shrink(),
+                    secondChild: Column(
+                      children: [
+                        Container(height: 1, color: AppColors.background),
+                        for (
+                          var index = 0;
+                          index < widget.items.length;
+                          index++
+                        )
+                          _DropdownSelectorOption<T>(
+                            item: widget.items[index],
+                            isSelected:
+                                widget.items[index].value == widget.value,
+                            isLast: index == widget.items.length - 1,
+                            onTap: () => _selectItem(widget.items[index].value),
+                          ),
+                      ],
+                    ),
+                    crossFadeState: _isExpanded
+                        ? CrossFadeState.showSecond
+                        : CrossFadeState.showFirst,
+                    duration: const Duration(milliseconds: 180),
+                    sizeCurve: Curves.easeOutCubic,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         if (widget.errorText case final errorText?) ...[
