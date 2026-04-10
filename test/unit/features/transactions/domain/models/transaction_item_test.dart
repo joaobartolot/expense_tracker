@@ -62,6 +62,20 @@ void main() {
       expect(restored, transaction);
       expect(restored.isCreditCardPayment, isTrue);
     });
+
+    test('preserves decimal money values to two fraction digits', () {
+      final transaction = _expenseTransaction(
+        amount: 1.23,
+        foreignAmount: 4.56,
+        foreignCurrencyCode: 'USD',
+        exchangeRate: 0.27,
+      );
+
+      final map = transaction.toMap();
+
+      expect(map['amount'], closeTo(1.23, 0.0001));
+      expect(map['foreignAmount'], closeTo(4.56, 0.0001));
+    });
   });
 
   group('equality and hashCode', () {

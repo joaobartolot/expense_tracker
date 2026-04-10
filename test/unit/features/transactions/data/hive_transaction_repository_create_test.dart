@@ -69,8 +69,8 @@ void main() {
       expect(stored.categoryId, transaction.categoryId);
 
       final rawStored = _rawStoredTransactions(transactionsBox).single;
-      expect(rawStored['amount'], 1250);
-      expect(rawStored['amount'], isA<int>());
+      expect(rawStored['amount'], closeTo(1250, 0.0001));
+      expect(rawStored['amount'], isA<num>());
       expect(rawStored['currencyCode'], 'EUR');
     });
 
@@ -246,6 +246,21 @@ void main() {
       expect(_rawStoredTransactions(transactionsBox), isEmpty);
     });
 
+    test('preserves decimal amounts for same-currency transactions', () async {
+      await _storeAccounts(accountsBox, [_account(currencyCode: 'EUR')]);
+      await _storeCategories(categoriesBox, [
+        _category(type: CategoryType.expense),
+      ]);
+      final transaction = _transaction(amount: 1.23, currencyCode: 'EUR');
+
+      await repository.addTransaction(transaction);
+
+      final stored = (await repository.getTransactions()).single;
+      final rawStored = _rawStoredTransactions(transactionsBox).single;
+      expect(stored.amount, closeTo(1.23, 0.0001));
+      expect(rawStored['amount'], closeTo(1.23, 0.0001));
+    });
+
     test(
       'rejects unsupported types at the create boundary',
       () {
@@ -286,8 +301,8 @@ void main() {
         await repository.addTransaction(transaction);
 
         final rawStored = _rawStoredTransactions(transactionsBox).single;
-        expect(rawStored['amount'], 1234);
-        expect(rawStored['amount'], isA<int>());
+        expect(rawStored['amount'], closeTo(1234, 0.0001));
+        expect(rawStored['amount'], isA<num>());
         expect(rawStored['currencyCode'], 'EUR');
         expect(rawStored['foreignAmount'], isNull);
         expect(rawStored['foreignCurrencyCode'], isNull);
@@ -311,11 +326,11 @@ void main() {
       await repository.addTransaction(transaction);
 
       final rawStored = _rawStoredTransactions(transactionsBox).single;
-      expect(rawStored['amount'], 800);
-      expect(rawStored['amount'], isA<int>());
+      expect(rawStored['amount'], closeTo(800, 0.0001));
+      expect(rawStored['amount'], isA<num>());
       expect(rawStored['currencyCode'], 'EUR');
-      expect(rawStored['foreignAmount'], 1000);
-      expect(rawStored['foreignAmount'], isA<int>());
+      expect(rawStored['foreignAmount'], closeTo(1000, 0.0001));
+      expect(rawStored['foreignAmount'], isA<num>());
       expect(rawStored['foreignCurrencyCode'], 'USD');
       expect(rawStored['exchangeRate'], 0.8);
     });

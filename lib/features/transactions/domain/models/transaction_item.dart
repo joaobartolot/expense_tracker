@@ -264,11 +264,11 @@ class TransactionItem {
     return stringValue;
   }
 
-  static int _serializeMoney(double value) {
-    return value.round();
+  static double _serializeMoney(double value) {
+    return (value * 100).round() / 100;
   }
 
-  static int? _serializeOptionalMoney(double? value) {
+  static double? _serializeOptionalMoney(double? value) {
     if (value == null) {
       return null;
     }

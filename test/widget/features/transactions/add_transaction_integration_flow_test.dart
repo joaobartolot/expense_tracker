@@ -93,6 +93,33 @@ void main() {
 
   group('add transaction integration flow', () {
     testWidgets(
+      'create flow preserves decimal amounts instead of rounding to whole units',
+      (tester) async {
+        await pumpHost(tester);
+        await _openAddTransactionPage(tester);
+        await _enterTextVisible(tester, find.byType(TextField).first, 'Coffee');
+        await _enterTextVisible(tester, find.byType(TextField).at(1), '1.23');
+        await _selectCategory(
+          tester,
+          triggerLabel: 'Choose a category',
+          optionLabel: 'Food',
+        );
+
+        await _tapVisible(
+          tester,
+          find.widgetWithText(FilledButton, 'Save transaction'),
+        );
+        await tester.pumpAndSettle();
+
+        expect(transactionRepository.transactions, hasLength(1));
+        expect(
+          transactionRepository.transactions.single.amount,
+          closeTo(1.23, 0.0001),
+        );
+      },
+    );
+
+    testWidgets(
       'create flow persists a normalized transaction through app state and updates visible state',
       (tester) async {
         await pumpHost(tester);

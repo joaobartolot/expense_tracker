@@ -397,7 +397,7 @@ class HiveTransactionRepository implements TransactionRepository {
     }
   }
 
-  double _normalizeMoney(double value) => value.roundToDouble();
+  double _normalizeMoney(double value) => (value * 100).roundToDouble() / 100;
 
   bool _isSameCurrency(String left, String right) {
     return left.trim().toUpperCase() == right.trim().toUpperCase();

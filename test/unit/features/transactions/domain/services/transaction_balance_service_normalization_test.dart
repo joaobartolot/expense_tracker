@@ -158,6 +158,29 @@ void main() {
       },
     );
 
+    test('preserves decimal amounts for same-currency transactions', () async {
+      final transaction = _transaction(amount: 1.23, currencyCode: 'EUR');
+
+      await service.saveTransaction(
+        transaction,
+        isEditing: false,
+        currentAccounts: [_account(currencyCode: 'EUR')],
+        currentCategories: _categoriesFor(transaction.type),
+      );
+
+      final captured =
+          verify(
+                () => transactionRepository.addTransaction(captureAny()),
+              ).captured.single
+              as TransactionItem;
+
+      expect(captured.amount, closeTo(1.23, 0.0001));
+      expect(captured.currencyCode, 'EUR');
+      expect(captured.exchangeRate, isNull);
+      expect(captured.foreignAmount, isNull);
+      expect(captured.foreignCurrencyCode, isNull);
+    });
+
     test(
       'uses account currency rather than any global or entry currency as persisted ledger currency',
       () async {
