@@ -73,6 +73,33 @@ void main() {
     },
   );
 
+  test(
+    'addAccount promotes a new primary and demotes the previous primary',
+    () async {
+      await _storeAccounts(accountsBox, [
+        _account(id: 'account-1', name: 'Main', isPrimary: true),
+        _account(id: 'account-2', name: 'Savings'),
+      ]);
+
+      await repository.addAccount(
+        _account(id: 'account-3', name: 'Travel', isPrimary: true),
+      );
+
+      final accounts = await repository.getAccounts();
+      expect(accounts.map((account) => account.id), [
+        'account-3',
+        'account-1',
+        'account-2',
+      ]);
+      expect(
+        accounts
+            .where((account) => account.isPrimary)
+            .map((account) => account.id),
+        ['account-3'],
+      );
+    },
+  );
+
   test('updateAccount ignores missing accounts', () async {
     await _storeAccounts(accountsBox, [
       _account(id: 'account-1', name: 'Wallet', isPrimary: true),
@@ -83,6 +110,29 @@ void main() {
     final accounts = await repository.getAccounts();
     expect(accounts.map((account) => account.id), ['account-1']);
   });
+
+  test(
+    'updateAccount keeps the existing primary when another account is updated as primary',
+    () async {
+      await _storeAccounts(accountsBox, [
+        _account(id: 'account-1', name: 'Main', isPrimary: true),
+        _account(id: 'account-2', name: 'Travel'),
+      ]);
+
+      await repository.updateAccount(
+        _account(id: 'account-2', name: 'Travel', isPrimary: true),
+      );
+
+      final accounts = await repository.getAccounts();
+      expect(accounts.map((account) => account.id), ['account-1', 'account-2']);
+      expect(
+        accounts
+            .where((account) => account.isPrimary)
+            .map((account) => account.id),
+        ['account-1'],
+      );
+    },
+  );
 
   test('deleteAccount removes the matching account', () async {
     await _storeAccounts(accountsBox, [
@@ -95,6 +145,28 @@ void main() {
     final accounts = await repository.getAccounts();
     expect(accounts.map((account) => account.id), ['account-2']);
   });
+
+  test(
+    'deleteAccount removes malformed duplicate primaries from the remaining list',
+    () async {
+      await accountsBox.put(HiveStorage.accountsKey, [
+        _account(id: 'account-1', name: 'Wallet', isPrimary: true).toMap(),
+        _account(id: 'account-2', name: 'Savings', isPrimary: true).toMap(),
+        _account(id: 'account-3', name: 'Travel').toMap(),
+      ]);
+
+      await repository.deleteAccount('account-1');
+
+      final accounts = await repository.getAccounts();
+      expect(accounts.map((account) => account.id), ['account-2', 'account-3']);
+      expect(
+        accounts
+            .where((account) => account.isPrimary)
+            .map((account) => account.id),
+        isEmpty,
+      );
+    },
+  );
 
   test('createAccountId returns a UUID', () {
     expect(repository.createAccountId(), matches(_uuidPattern));
