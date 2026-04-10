@@ -725,188 +725,177 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(32),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _isEditing ? 'Update this entry' : 'Create a new entry',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    if (_accounts.isEmpty) ...[
-                      Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: AppColors.expenseSurface,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.account_balance_wallet_outlined,
-                              color: AppColors.textPrimary,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'You need at least one account before you can register a transaction.',
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                    SegmentedToggleField<TransactionType>(
-                      label: 'Type',
-                      value: _type,
-                      items: const [
-                        SegmentedToggleItem(
-                          value: TransactionType.expense,
-                          label: 'Expense',
-                          icon: Icons.arrow_upward_rounded,
-                        ),
-                        SegmentedToggleItem(
-                          value: TransactionType.income,
-                          label: 'Income',
-                          icon: Icons.arrow_downward_rounded,
-                        ),
-                      ],
-                      onChanged: _updateType,
-                    ),
-                    const SizedBox(height: 20),
-                    AppTextInput(
-                      label: 'Name',
-                      controller: _nameController,
-                      hintText: 'Transaction name',
-                      textCapitalization: TextCapitalization.words,
-                      errorText: _nameError,
-                    ),
-                    const SizedBox(height: 16),
-                    if (showAccountSelector) ...[
-                      CustomDropdownSelector<Account>(
-                        label: 'Account',
-                        hintText: 'Choose an account',
-                        value: _selectedAccount,
-                        items: accountItems,
-                        errorText: _accountError,
-                        onChanged: (account) {
-                          setState(() {
-                            _selectedAccount = account;
-                          });
-                          _handleTargetCurrencyChanged();
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                    ] else if (_accounts.length == 1) ...[
-                      _SingleAccountBanner(
-                        account: _accounts.first,
-                        errorText: _accountError,
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    AppTextInput(
-                      label: 'Amount',
-                      controller: _amountController,
-                      keyboardType: TextInputType.number,
-                      hintText: '0.00',
-                      errorText: _amountError,
-                      prefixText: _amountPrefix,
-                    ),
-                    const SizedBox(height: 16),
-                    CustomDropdownSelector<CategoryItem>(
-                      label: 'Category',
-                      hintText: availableCategories.isEmpty
-                          ? 'No categories available'
-                          : 'Choose a category',
-                      value: _selectedCategory,
-                      items: categoryItems,
-                      errorText: _categoryError,
-                      onChanged: (category) {
-                        setState(() {
-                          _selectedCategory = category;
-                        });
-                      },
-                    ),
-                    if (availableCategories.isEmpty) ...[
-                      const SizedBox(height: 6),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Text(
-                          'Create a category for this transaction type.',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: OutlinedButton.icon(
-                        onPressed: () =>
-                            _setAdvancedFieldsVisible(!_showsAdvancedFields),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.textPrimary,
-                          side: BorderSide(color: AppColors.border),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 14,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                        ),
-                        icon: Icon(
-                          _showsAdvancedFields
-                              ? Icons.tune_rounded
-                              : Icons.tune_outlined,
-                        ),
-                        label: Text(
-                          _showsAdvancedFields ? 'Hide advanced' : 'Advanced',
-                        ),
-                      ),
-                    ),
-                    if (_showsAdvancedFields) ...[
-                      const SizedBox(height: 16),
-                      _AdvancedTransactionSection(
-                        selectedDateLabel: selectedDateLabel,
-                        selectedDateHelper: selectedDateHelper,
-                        onSelectDate: _pickTransactionDate,
-                        currencySection: _AdvancedCurrencySection(
-                          entryCurrencyCode: _selectedEntryCurrencyCode,
-                          targetCurrencyCode: _targetCurrencyCode,
-                          currencyItems: currencyItems,
-                          convertedAmount: _convertedAmountValue,
-                          enteredAmount: _enteredAmountValue,
-                          isFetchingExchangeRate: _isFetchingExchangeRate,
-                          hasResolvedExchangeRate: _exchangeRateValue != null,
-                          exchangeRate: _exchangeRateValue,
-                          exchangeRateError: _exchangeRateError,
-                          onCurrencyChanged: _updateEntryCurrency,
-                          onRetryExchangeRate: _syncExchangeRateIfNeeded,
-                        ),
-                      ),
-                    ],
-                  ],
+              Text(
+                _isEditing ? 'Update this entry' : 'Create a new entry',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
                 ),
               ),
+              const SizedBox(height: 24),
+              if (_accounts.isEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: AppColors.expenseSurface,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.account_balance_wallet_outlined,
+                        color: AppColors.textPrimary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'You need at least one account before you can register a transaction.',
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+              SegmentedToggleField<TransactionType>(
+                label: 'Type',
+                value: _type,
+                items: const [
+                  SegmentedToggleItem(
+                    value: TransactionType.expense,
+                    label: 'Expense',
+                    icon: Icons.arrow_upward_rounded,
+                  ),
+                  SegmentedToggleItem(
+                    value: TransactionType.income,
+                    label: 'Income',
+                    icon: Icons.arrow_downward_rounded,
+                  ),
+                ],
+                onChanged: _updateType,
+              ),
+              const SizedBox(height: 20),
+              AppTextInput(
+                label: 'Name',
+                controller: _nameController,
+                hintText: 'Transaction name',
+                textCapitalization: TextCapitalization.words,
+                errorText: _nameError,
+              ),
               const SizedBox(height: 16),
+              if (showAccountSelector) ...[
+                CustomDropdownSelector<Account>(
+                  label: 'Account',
+                  hintText: 'Choose an account',
+                  value: _selectedAccount,
+                  items: accountItems,
+                  errorText: _accountError,
+                  onChanged: (account) {
+                    setState(() {
+                      _selectedAccount = account;
+                    });
+                    _handleTargetCurrencyChanged();
+                  },
+                ),
+                const SizedBox(height: 16),
+              ] else if (_accounts.length == 1) ...[
+                _SingleAccountBanner(
+                  account: _accounts.first,
+                  errorText: _accountError,
+                ),
+                const SizedBox(height: 16),
+              ],
+              AppTextInput(
+                label: 'Amount',
+                controller: _amountController,
+                keyboardType: TextInputType.number,
+                hintText: '0.00',
+                errorText: _amountError,
+                prefixText: _amountPrefix,
+              ),
+              const SizedBox(height: 16),
+              CustomDropdownSelector<CategoryItem>(
+                label: 'Category',
+                hintText: availableCategories.isEmpty
+                    ? 'No categories available'
+                    : 'Choose a category',
+                value: _selectedCategory,
+                items: categoryItems,
+                errorText: _categoryError,
+                onChanged: (category) {
+                  setState(() {
+                    _selectedCategory = category;
+                  });
+                },
+              ),
+              if (availableCategories.isEmpty) ...[
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    'Create a category for this transaction type.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      _setAdvancedFieldsVisible(!_showsAdvancedFields),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textPrimary,
+                    side: BorderSide(color: AppColors.border),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  icon: Icon(
+                    _showsAdvancedFields
+                        ? Icons.tune_rounded
+                        : Icons.tune_outlined,
+                  ),
+                  label: Text(
+                    _showsAdvancedFields ? 'Hide advanced' : 'Advanced',
+                  ),
+                ),
+              ),
+              if (_showsAdvancedFields) ...[
+                const SizedBox(height: 16),
+                _AdvancedTransactionSection(
+                  selectedDateLabel: selectedDateLabel,
+                  selectedDateHelper: selectedDateHelper,
+                  onSelectDate: _pickTransactionDate,
+                  currencySection: _AdvancedCurrencySection(
+                    entryCurrencyCode: _selectedEntryCurrencyCode,
+                    targetCurrencyCode: _targetCurrencyCode,
+                    currencyItems: currencyItems,
+                    convertedAmount: _convertedAmountValue,
+                    enteredAmount: _enteredAmountValue,
+                    isFetchingExchangeRate: _isFetchingExchangeRate,
+                    hasResolvedExchangeRate: _exchangeRateValue != null,
+                    exchangeRate: _exchangeRateValue,
+                    exchangeRateError: _exchangeRateError,
+                    onCurrencyChanged: _updateEntryCurrency,
+                    onRetryExchangeRate: _syncExchangeRateIfNeeded,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
               PrimaryActionButton(
                 label: _isEditing ? 'Save changes' : 'Save transaction',
                 busyLabel: _isEditing ? 'Saving...' : 'Creating...',

@@ -132,78 +132,63 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(32),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _isEditing
-                          ? 'Refresh this category'
-                          : 'Create a new category',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Center(
-                      child: CategoryIconPicker(
-                        selectedIcon: _selectedIcon ?? Icons.sell_outlined,
-                        accentColor: AppColors.brand,
-                        backgroundColor: AppColors.brand.withValues(
-                          alpha: 0.08,
-                        ),
-                        onIconSelected: (icon) {
-                          setState(() {
-                            _selectedIcon = icon;
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    SegmentedToggleField<CategoryType>(
-                      label: 'Type',
-                      value: _type,
-                      items: const [
-                        SegmentedToggleItem(
-                          value: CategoryType.expense,
-                          label: 'Expense',
-                          icon: Icons.arrow_upward_rounded,
-                        ),
-                        SegmentedToggleItem(
-                          value: CategoryType.income,
-                          label: 'Income',
-                          icon: Icons.arrow_downward_rounded,
-                        ),
-                      ],
-                      onChanged: _updateType,
-                    ),
-                    const SizedBox(height: 20),
-                    AppTextInput(
-                      label: 'Name',
-                      hintText: 'Category name',
-                      controller: _nameController,
-                      textCapitalization: TextCapitalization.words,
-                      errorText: _nameError,
-                    ),
-                    const SizedBox(height: 16),
-                    AppTextInput(
-                      label: 'Description',
-                      hintText: 'Short description',
-                      controller: _descriptionController,
-                      textCapitalization: TextCapitalization.sentences,
-                      errorText: _descriptionError,
-                    ),
-                  ],
+              Text(
+                _isEditing ? 'Refresh this category' : 'Create a new category',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
                 ),
               ),
+              const SizedBox(height: 24),
+              Center(
+                child: CategoryIconPicker(
+                  selectedIcon: _selectedIcon ?? Icons.sell_outlined,
+                  accentColor: AppColors.brand,
+                  backgroundColor: AppColors.brand.withValues(alpha: 0.08),
+                  onIconSelected: (icon) {
+                    setState(() {
+                      _selectedIcon = icon;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+              SegmentedToggleField<CategoryType>(
+                label: 'Type',
+                value: _type,
+                items: const [
+                  SegmentedToggleItem(
+                    value: CategoryType.expense,
+                    label: 'Expense',
+                    icon: Icons.arrow_upward_rounded,
+                  ),
+                  SegmentedToggleItem(
+                    value: CategoryType.income,
+                    label: 'Income',
+                    icon: Icons.arrow_downward_rounded,
+                  ),
+                ],
+                onChanged: _updateType,
+              ),
+              const SizedBox(height: 20),
+              AppTextInput(
+                label: 'Name',
+                hintText: 'Category name',
+                controller: _nameController,
+                textCapitalization: TextCapitalization.words,
+                errorText: _nameError,
+              ),
               const SizedBox(height: 16),
+              AppTextInput(
+                label: 'Description',
+                hintText: 'Short description',
+                controller: _descriptionController,
+                textCapitalization: TextCapitalization.sentences,
+                errorText: _descriptionError,
+              ),
+              const SizedBox(height: 20),
               PrimaryActionButton(
                 label: _isEditing ? 'Save changes' : 'Save category',
                 onPressed: _saveCategory,

@@ -243,156 +243,145 @@ class _AddAccountPageState extends ConsumerState<AddAccountPage> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(32),
+              Text(
+                _isEditing
+                    ? 'Update this opening balance'
+                    : 'Create a tracked account',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _isEditing
-                          ? 'Update this opening balance'
-                          : 'Create a tracked account',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+              ),
+              const SizedBox(height: 24),
+              AppTextInput(
+                label: 'Name',
+                hintText: 'Main checking, Wallet, Travel fund...',
+                controller: _nameController,
+                errorText: _nameError,
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 18),
+              AppTextInput(
+                label: 'Description',
+                hintText: 'Optional notes about this account',
+                controller: _descriptionController,
+                textCapitalization: TextCapitalization.sentences,
+              ),
+              const SizedBox(height: 18),
+              CustomDropdownSelector<AccountType>(
+                label: 'Account type',
+                hintText: 'Choose an account type',
+                items: accountTypeItems,
+                value: _selectedType,
+                onChanged: (value) {
+                  setState(() {
+                    _selectedType = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 18),
+              _PrimaryAccountToggle(
+                value: _isPrimaryAccount,
+                onChanged: (value) {
+                  setState(() {
+                    _isPrimaryAccount = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 18),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: CustomDropdownSelector<String>(
+                      label: 'Currency',
+                      hintText: 'Choose a currency',
+                      items: currencyItems,
+                      value: _selectedCurrencyCode,
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedCurrencyCode = value;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: AppTextInput(
+                      label: 'Opening balance',
+                      hintText: '0.00',
+                      controller: _balanceController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                        signed: true,
                       ),
+                      prefixText: _balancePrefix,
                     ),
-                    const SizedBox(height: 24),
-                    AppTextInput(
-                      label: 'Name',
-                      hintText: 'Main checking, Wallet, Travel fund...',
-                      controller: _nameController,
-                      errorText: _nameError,
-                      textCapitalization: TextCapitalization.words,
-                    ),
-                    const SizedBox(height: 18),
-                    AppTextInput(
-                      label: 'Description',
-                      hintText: 'Optional notes about this account',
-                      controller: _descriptionController,
-                      textCapitalization: TextCapitalization.sentences,
-                    ),
-                    const SizedBox(height: 18),
-                    CustomDropdownSelector<AccountType>(
-                      label: 'Account type',
-                      hintText: 'Choose an account type',
-                      items: accountTypeItems,
-                      value: _selectedType,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedType = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 18),
-                    _PrimaryAccountToggle(
-                      value: _isPrimaryAccount,
-                      onChanged: (value) {
-                        setState(() {
-                          _isPrimaryAccount = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 18),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: CustomDropdownSelector<String>(
-                            label: 'Currency',
-                            hintText: 'Choose a currency',
-                            items: currencyItems,
-                            value: _selectedCurrencyCode,
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedCurrencyCode = value;
-                              });
-                            },
+                  ),
+                ],
+              ),
+              if (_isCreditCard) ...[
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Credit card details',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      _DueDayPicker(
+                        value: _creditCardDueDay,
+                        onChanged: (value) {
+                          setState(() {
+                            _creditCardDueDay = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 18),
+                      SegmentedToggleField<CreditCardPaymentTracking>(
+                        label: 'Payment tracking',
+                        value: _paymentTracking,
+                        items: const [
+                          SegmentedToggleItem(
+                            value: CreditCardPaymentTracking.manual,
+                            label: 'Manual',
+                            icon: Icons.pan_tool_alt_outlined,
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: AppTextInput(
-                            label: 'Opening balance',
-                            hintText: '0.00',
-                            controller: _balanceController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                              signed: true,
-                            ),
-                            prefixText: _balancePrefix,
+                          SegmentedToggleItem(
+                            value: CreditCardPaymentTracking.automatic,
+                            label: 'Auto',
+                            icon: Icons.auto_mode_outlined,
                           ),
-                        ),
-                      ],
-                    ),
-                    if (_isCreditCard) ...[
-                      const SizedBox(height: 24),
-                      Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Credit card details',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-                            _DueDayPicker(
-                              value: _creditCardDueDay,
-                              onChanged: (value) {
-                                setState(() {
-                                  _creditCardDueDay = value;
-                                });
-                              },
-                            ),
-                            const SizedBox(height: 18),
-                            SegmentedToggleField<CreditCardPaymentTracking>(
-                              label: 'Payment tracking',
-                              value: _paymentTracking,
-                              items: const [
-                                SegmentedToggleItem(
-                                  value: CreditCardPaymentTracking.manual,
-                                  label: 'Manual',
-                                  icon: Icons.pan_tool_alt_outlined,
-                                ),
-                                SegmentedToggleItem(
-                                  value: CreditCardPaymentTracking.automatic,
-                                  label: 'Auto',
-                                  icon: Icons.auto_mode_outlined,
-                                ),
-                              ],
-                              onChanged: (value) {
-                                setState(() {
-                                  _paymentTracking = value;
-                                });
-                              },
-                            ),
-                          ],
-                        ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _paymentTracking = value;
+                          });
+                        },
                       ),
                     ],
-                    const SizedBox(height: 24),
-                    PrimaryActionButton(
-                      label: _isEditing ? 'Save changes' : 'Create account',
-                      busyLabel: 'Saving...',
-                      isBusy: _isSaving,
-                      onPressed: _saveAccount,
-                    ),
-                  ],
+                  ),
                 ),
+              ],
+              const SizedBox(height: 24),
+              PrimaryActionButton(
+                label: _isEditing ? 'Save changes' : 'Create account',
+                busyLabel: 'Saving...',
+                isBusy: _isSaving,
+                onPressed: _saveAccount,
               ),
             ],
           ),
