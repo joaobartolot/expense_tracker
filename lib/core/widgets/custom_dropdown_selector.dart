@@ -1,5 +1,6 @@
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart' show kTouchSlop;
 
 class DropdownSelectorItem<T> {
   const DropdownSelectorItem({
@@ -40,7 +41,11 @@ class CustomDropdownSelector<T> extends StatefulWidget {
 
 class _CustomDropdownSelectorState<T> extends State<CustomDropdownSelector<T>>
     with SingleTickerProviderStateMixin {
+  static const double _outsideTapSlop = kTouchSlop;
+
   bool _isExpanded = false;
+  int? _outsidePointer;
+  Offset? _outsidePointerDownPosition;
 
   DropdownSelectorItem<T>? get _selectedItem {
     final value = widget.value;
@@ -80,6 +85,30 @@ class _CustomDropdownSelectorState<T> extends State<CustomDropdownSelector<T>>
     _setExpanded(false);
   }
 
+  void _handleTapOutside(PointerDownEvent event) {
+    _outsidePointer = event.pointer;
+    _outsidePointerDownPosition = event.position;
+  }
+
+  void _handleTapUpOutside(PointerUpEvent event) {
+    if (_outsidePointer != event.pointer) {
+      return;
+    }
+
+    final downPosition = _outsidePointerDownPosition;
+    _outsidePointer = null;
+    _outsidePointerDownPosition = null;
+
+    if (downPosition == null) {
+      return;
+    }
+
+    final dragDistance = (event.position - downPosition).distance;
+    if (dragDistance <= _outsideTapSlop) {
+      _closeExpanded();
+    }
+  }
+
   void _selectItem(T value) {
     widget.onChanged(value);
     _closeExpanded();
@@ -103,7 +132,8 @@ class _CustomDropdownSelectorState<T> extends State<CustomDropdownSelector<T>>
         ),
         const SizedBox(height: 10),
         TapRegion(
-          onTapOutside: (_) => _closeExpanded(),
+          onTapOutside: _handleTapOutside,
+          onTapUpOutside: _handleTapUpOutside,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             decoration: BoxDecoration(
