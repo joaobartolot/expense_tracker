@@ -1,7 +1,6 @@
 import 'package:expense_tracker/app/state/app_state_provider.dart';
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/widgets/context_action_menu.dart';
-import 'package:expense_tracker/core/widgets/primary_action_button.dart';
 import 'package:expense_tracker/features/recurring_transactions/domain/models/recurring_transaction_overview.dart';
 import 'package:expense_tracker/features/recurring_transactions/presentation/pages/add_recurring_transaction_page.dart';
 import 'package:expense_tracker/features/recurring_transactions/presentation/widgets/recurring_transaction_card.dart';
@@ -182,13 +181,15 @@ class RecurringTransactionsPage extends ConsumerWidget {
                   ),
                 ),
               ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                onPressed: () => _openCreateFlow(context),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add'),
+              ),
             ],
           ),
-          const SizedBox(height: 20),
-          PrimaryActionButton(
-            label: 'Add recurring item',
-            onPressed: () => _openCreateFlow(context),
-          ),
+          const SizedBox(height: 24),
           if (manualDueItems.isNotEmpty) ...[
             const SizedBox(height: 28),
             Text(
