@@ -252,7 +252,7 @@ class HomePage extends ConsumerWidget {
             accentColor: state.periodSummary.netMovement >= 0
                 ? AppColors.income
                 : AppColors.dangerDark,
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.surface,
           ),
           const SizedBox(height: 28),
           Row(

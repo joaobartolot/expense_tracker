@@ -20,13 +20,16 @@ class PillBottomNavBar extends StatelessWidget {
     return Container(
       height: 64,
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: colors.surfaceAlt,
         borderRadius: BorderRadius.circular(999),
-        boxShadow: const [
+        border: Border.all(color: colors.border),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.shadow,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.black.withValues(alpha: 0.28)
+                : AppColors.shadow,
             blurRadius: 24,
-            offset: Offset(0, 12),
+            offset: const Offset(0, 12),
           ),
         ],
       ),
@@ -51,7 +54,11 @@ class PillBottomNavBar extends StatelessWidget {
                 height: constraints.maxHeight - (outerPadding * 2),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppColors.brand.withValues(alpha: 0.14),
+                    color: AppColors.brand.withValues(
+                      alpha: Theme.of(context).brightness == Brightness.dark
+                          ? 0.22
+                          : 0.14,
+                    ),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),

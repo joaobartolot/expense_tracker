@@ -12,6 +12,8 @@ import 'package:expense_tracker/features/recurring_transactions/data/recurring_t
 import 'package:expense_tracker/features/recurring_transactions/domain/models/recurring_transaction.dart';
 import 'package:expense_tracker/features/recurring_transactions/domain/services/recurring_transaction_execution_service.dart';
 import 'package:expense_tracker/features/settings/data/settings_repository.dart';
+import 'package:expense_tracker/features/settings/domain/models/app_settings.dart';
+import 'package:expense_tracker/features/settings/domain/models/app_theme_preference.dart';
 import 'package:expense_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:expense_tracker/features/transactions/domain/models/transaction_item.dart';
 import 'package:expense_tracker/features/transactions/domain/services/transaction_aggregation_service.dart';
@@ -91,7 +93,11 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
       _requestRefresh();
     }
 
-    settingsListener.addListener(scheduleRefresh);
+    void scheduleSettingsRefresh() {
+      unawaited(_handleSettingsChanged());
+    }
+
+    settingsListener.addListener(scheduleSettingsRefresh);
     accountsListener.addListener(scheduleRefresh);
     categoriesListener.addListener(scheduleRefresh);
     transactionsListener.addListener(scheduleRefresh);
@@ -99,12 +105,57 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
 
     ref.onDispose(() {
       _dateRefreshTimer?.cancel();
-      settingsListener.removeListener(scheduleRefresh);
+      settingsListener.removeListener(scheduleSettingsRefresh);
       accountsListener.removeListener(scheduleRefresh);
       categoriesListener.removeListener(scheduleRefresh);
       transactionsListener.removeListener(scheduleRefresh);
       recurringTransactionsListener.removeListener(scheduleRefresh);
     });
+  }
+
+  Future<void> _handleSettingsChanged() async {
+    final settings = _settingsRepository.getSettings();
+    final previousSettings = state.settings;
+    if (_matchesSettings(previousSettings, settings)) {
+      return;
+    }
+
+    final requiresDerivedRebuild =
+        previousSettings.defaultCurrencyCode != settings.defaultCurrencyCode ||
+        previousSettings.financialCycleDay != settings.financialCycleDay;
+
+    if (!state.hasLoaded || !requiresDerivedRebuild) {
+      state = state.copyWith(settings: settings);
+      return;
+    }
+
+    final nextState = await _stateFactory.buildSnapshot(
+      previous: state,
+      settings: settings,
+      accounts: state.accounts,
+      categories: state.categories,
+      transactions: state.transactions,
+      recurringTransactions: state.recurringTransactions,
+      now: state.asOfDate,
+    );
+
+    if (!_matchesSettings(_settingsRepository.getSettings(), settings)) {
+      return;
+    }
+
+    _scheduleDateRefresh(nextState.asOfDate);
+    state = nextState.copyWith(
+      hasLoaded: state.hasLoaded,
+      isLoading: state.isLoading,
+      loadError: state.loadError,
+    );
+  }
+
+  bool _matchesSettings(AppSettings left, AppSettings right) {
+    return left.displayName == right.displayName &&
+        left.themePreference == right.themePreference &&
+        left.defaultCurrencyCode == right.defaultCurrencyCode &&
+        left.financialCycleDay == right.financialCycleDay;
   }
 
   String createAccountId() => _accountRepository.createAccountId();
@@ -392,6 +443,13 @@ class AppStateNotifier extends Notifier<AppStateSnapshot> {
 
   Future<void> updateFinancialCycleDay(int day) {
     return _settingsRepository.updateFinancialCycleDay(day);
+  }
+
+  Future<void> updateThemePreference(AppThemePreference preference) {
+    state = state.copyWith(
+      settings: state.settings.copyWith(themePreference: preference),
+    );
+    return _settingsRepository.updateThemePreference(preference);
   }
 
   TransactionItem? _transactionForId(String transactionId) {

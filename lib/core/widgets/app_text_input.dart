@@ -40,6 +40,7 @@ class AppTextInput extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         TextField(
+          key: ValueKey(theme.brightness),
           controller: controller,
           keyboardType: keyboardType,
           textCapitalization: textCapitalization,

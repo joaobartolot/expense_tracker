@@ -6,6 +6,7 @@ import 'package:expense_tracker/core/widgets/app_text_input.dart';
 import 'package:expense_tracker/core/widgets/custom_dropdown_selector.dart';
 import 'package:expense_tracker/core/widgets/day_of_month_picker_field.dart';
 import 'package:expense_tracker/core/widgets/primary_action_button.dart';
+import 'package:expense_tracker/features/settings/domain/models/app_theme_preference.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -25,6 +26,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   String? _nameErrorText;
   bool _isSaving = false;
   bool _isSavingMonthStart = false;
+
+  AppThemePreference _nextThemePreference(
+    AppThemePreference preference, {
+    required bool isDarkTheme,
+  }) {
+    return switch (preference) {
+      AppThemePreference.system =>
+        isDarkTheme ? AppThemePreference.light : AppThemePreference.dark,
+      AppThemePreference.light => AppThemePreference.dark,
+      AppThemePreference.dark => AppThemePreference.light,
+    };
+  }
 
   @override
   void initState() {
@@ -100,6 +113,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     });
   }
 
+  Future<void> _cycleThemePreference() async {
+    final theme = Theme.of(context);
+    final nextPreference = _nextThemePreference(
+      ref.read(appStateProvider).settings.themePreference,
+      isDarkTheme: theme.brightness == Brightness.dark,
+    );
+
+    await ref
+        .read(appStateProvider.notifier)
+        .updateThemePreference(nextPreference);
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(appStateProvider);
@@ -107,6 +132,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final theme = Theme.of(context);
     final colors = AppColors.of(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final isDarkTheme = theme.brightness == Brightness.dark;
     final previewGreeting = state.settings.copyWith(
       displayName: _nameController.text.trim(),
       defaultCurrencyCode: _selectedCurrencyCode,
@@ -148,6 +174,36 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                InkWell(
+                  onTap: _cycleThemePreference,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Theme',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          isDarkTheme
+                              ? Icons.nightlight_round
+                              : Icons.wb_sunny_rounded,
+                          color: isDarkTheme
+                              ? const Color(0xFF74A7FF)
+                              : const Color(0xFFF2C94C),
+                          size: 28,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
                 Text(
                   'Greeting',
                   style: theme.textTheme.titleMedium?.copyWith(

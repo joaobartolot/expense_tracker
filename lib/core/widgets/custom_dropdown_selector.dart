@@ -117,6 +117,7 @@ class _CustomDropdownSelectorState<T> extends State<CustomDropdownSelector<T>>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = AppColors.of(context);
     final selectedItem = _selectedItem;
     final hasError = widget.errorText != null;
 
@@ -127,24 +128,23 @@ class _CustomDropdownSelectorState<T> extends State<CustomDropdownSelector<T>>
           widget.label,
           style: theme.textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: colors.textPrimary,
           ),
         ),
         const SizedBox(height: 10),
         TapRegion(
           onTapOutside: _handleTapOutside,
           onTapUpOutside: _handleTapUpOutside,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
+          child: Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: colors.surface,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
                 color: hasError
                     ? Colors.red.shade400
                     : _isExpanded
                     ? AppColors.brand
-                    : AppColors.border,
+                    : colors.border,
                 width: 1.4,
               ),
               boxShadow: _isExpanded
@@ -174,7 +174,7 @@ class _CustomDropdownSelectorState<T> extends State<CustomDropdownSelector<T>>
                               ? Text(
                                   widget.hintText,
                                   style: theme.textTheme.bodyLarge?.copyWith(
-                                    color: AppColors.textSecondary,
+                                    color: colors.textSecondary,
                                   ),
                                 )
                               : _DropdownSelectorContent(item: selectedItem),
@@ -186,8 +186,8 @@ class _CustomDropdownSelectorState<T> extends State<CustomDropdownSelector<T>>
                           child: Icon(
                             Icons.keyboard_arrow_down_rounded,
                             color: widget.items.isEmpty
-                                ? AppColors.textSecondary
-                                : AppColors.iconMuted,
+                                ? colors.textSecondary
+                                : colors.iconMuted,
                           ),
                         ),
                       ],
@@ -202,7 +202,7 @@ class _CustomDropdownSelectorState<T> extends State<CustomDropdownSelector<T>>
                     firstChild: const SizedBox.shrink(),
                     secondChild: Column(
                       children: [
-                        Container(height: 1, color: AppColors.background),
+                        Container(height: 1, color: colors.background),
                         for (
                           var index = 0;
                           index < widget.items.length;
@@ -254,6 +254,8 @@ class _DropdownSelectorContent<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
     if (item.icon case final IconData icon) {
       return Row(
         children: [
@@ -261,10 +263,10 @@ class _DropdownSelectorContent<T> extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: colors.background,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, size: 18, color: AppColors.iconMuted),
+            child: Icon(icon, size: 18, color: colors.iconMuted),
           ),
           const SizedBox(width: 12),
           Expanded(child: _DropdownSelectorText(item: item)),
@@ -284,6 +286,7 @@ class _DropdownSelectorText<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = AppColors.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -292,7 +295,7 @@ class _DropdownSelectorText<T> extends StatelessWidget {
           item.label,
           style: theme.textTheme.bodyLarge?.copyWith(
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: colors.textPrimary,
           ),
         ),
         if (item.subtitle case final String subtitle) ...[
@@ -300,7 +303,7 @@ class _DropdownSelectorText<T> extends StatelessWidget {
           Text(
             subtitle,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textSecondary,
+              color: colors.textSecondary,
             ),
           ),
         ],
@@ -324,8 +327,12 @@ class _DropdownSelectorOption<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
     return Material(
-      color: isSelected ? AppColors.brand.withValues(alpha: 0.08) : null,
+      color: isSelected
+          ? AppColors.brand.withValues(alpha: 0.08)
+          : colors.surface,
       child: InkWell(
         onTap: onTap,
         child: Padding(
